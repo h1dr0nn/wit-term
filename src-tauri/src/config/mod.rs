@@ -2,7 +2,7 @@
 
 mod theme;
 
-pub use theme::{Theme, ThemeColors};
+pub use theme::{Theme, ThemeColors, ThemeInfo};
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -96,18 +96,33 @@ fn config_path() -> PathBuf {
 }
 
 /// List available themes from the themes directory.
-pub fn list_themes(themes_dir: &Path) -> Vec<String> {
+pub fn list_themes(themes_dir: &Path) -> Vec<ThemeInfo> {
     let mut themes = Vec::new();
     if let Ok(entries) = std::fs::read_dir(themes_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "toml") {
                 if let Some(stem) = path.file_stem() {
-                    themes.push(stem.to_string_lossy().into_owned());
+                    let id = stem.to_string_lossy().into_owned();
+                    // Try to get name from file, fallback to id
+                    let name = get_theme_name(&path).unwrap_or_else(|_| id.clone());
+                    themes.push(ThemeInfo { id, name });
                 }
             }
         }
     }
-    themes.sort();
+    themes.sort_by(|a, b| a.name.cmp(&b.name));
     themes
 }
+
+fn get_theme_name(path: &Path) -> Result<String, String> {
+    let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let theme: toml::Value = toml::from_str(&content).map_err(|e| e.to_string())?;
+    theme
+        .get("theme")
+        .and_then(|t| t.get("name"))
+        .and_then(|n| n.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "No name found".to_string())
+}
+

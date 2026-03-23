@@ -153,8 +153,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                         className="bg-[var(--color-surface-hover)] text-[var(--color-text)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)] transition-colors min-w-[140px]"
                       >
                         {themes.map((t) => (
-                          <option key={t} value={t}>{t}</option>
+                          <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
+
                       </select>
                     </SettingRow>
                   </SettingGroup>

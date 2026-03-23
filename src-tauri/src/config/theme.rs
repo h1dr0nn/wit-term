@@ -12,6 +12,14 @@ pub struct Theme {
     pub colors: ThemeColors,
 }
 
+/// Brief theme info for listing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemeInfo {
+    pub id: String,
+    pub name: String,
+}
+
+
 /// Theme color palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThemeColors {

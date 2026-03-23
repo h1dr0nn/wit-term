@@ -39,9 +39,10 @@ fn resolve_themes_dir(handle: &AppHandle) -> PathBuf {
 }
 
 #[tauri::command]
-pub fn list_themes(handle: AppHandle) -> Vec<String> {
+pub fn list_themes(handle: AppHandle) -> Vec<crate::config::ThemeInfo> {
     config::list_themes(&resolve_themes_dir(&handle))
 }
+
 
 #[tauri::command]
 pub fn get_theme(handle: AppHandle, name: String) -> Result<Theme, String> {

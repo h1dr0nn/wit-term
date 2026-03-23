@@ -32,6 +32,12 @@ export interface Theme {
   colors: ThemeColors;
 }
 
+export interface ThemeInfo {
+  id: string;
+  name: string;
+}
+
+
 /** Apply theme colors as CSS custom properties on :root */
 function applyTheme(colors: ThemeColors) {
   const root = document.documentElement;
@@ -128,11 +134,12 @@ function mixColor(c1: string, c2: string, ratio: number): string {
 
 export function useTheme() {
   const [currentTheme, setCurrentTheme] = useState<string>("wit-dark");
-  const [themes, setThemes] = useState<string[]>([]);
+  const [themes, setThemes] = useState<ThemeInfo[]>([]);
+
 
   // Load theme list and apply current theme on mount
   useEffect(() => {
-    invoke<string[]>("list_themes").then(setThemes).catch(() => {});
+    invoke<ThemeInfo[]>("list_themes").then(setThemes).catch(() => {});
 
     invoke<{ theme: string }>("get_config")
       .then((config) => {
