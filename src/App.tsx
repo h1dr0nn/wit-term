@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { TerminalView } from "./components/terminal/TerminalView";
 import { TabBar } from "./components/tabs/TabBar";
 import { SessionSidebar } from "./components/sidebar/SessionSidebar";
+import { SettingsModal } from "./components/settings/SettingsModal";
 import { useSessionStore } from "./stores/sessionStore";
 import { useTheme } from "./hooks/useTheme";
 
 function App() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const sessions = useSessionStore((s) => s.sessions);
   const createNewSession = useSessionStore((s) => s.createNewSession);
 
@@ -20,12 +22,18 @@ function App() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Toggle sidebar with Ctrl+B
+  // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Ctrl+B = toggle sidebar
       if (e.ctrlKey && !e.shiftKey && (e.key === "b" || e.key === "B")) {
         e.preventDefault();
         setSidebarVisible((v) => !v);
+      }
+      // Ctrl+, = settings
+      if (e.ctrlKey && e.key === ",") {
+        e.preventDefault();
+        setSettingsVisible((v) => !v);
       }
     };
     window.addEventListener("keydown", handler);
@@ -41,6 +49,10 @@ function App() {
           <TerminalView />
         </main>
       </div>
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+      />
     </div>
   );
 }
