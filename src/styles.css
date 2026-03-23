@@ -1,96 +1,127 @@
 @import "tailwindcss";
 
+/* ─── Design System (from documents/04-ui-ux/design-system.md) ─── */
 :root {
-  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  /* Fonts */
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
 
-  /* Default theme (wit-dark) — overridden by JS on load */
-  --term-fg: #cdd6f4;
-  --term-bg: #1e1e2e;
-  --term-cursor: #f5e0dc;
-  --term-selection-bg: #45475a;
-  --term-selection-fg: #cdd6f4;
+  /* Color Palette */
+  --color-primary: #58E6D9;
+  --color-primary-hover: #6AEEE2;
+  --color-primary-muted: rgba(88, 230, 217, 0.125);
+  --color-accent: #D4A857;
+  --color-accent-hover: #E0B96A;
+  --color-bg: #0D1117;
+  --color-surface: #161B22;
+  --color-surface-hover: #1C2129;
+  --color-surface-active: #22272E;
+  --color-border: #30363D;
+  --color-border-muted: #21262D;
+  --color-text: #F0F6FC;
+  --color-text-secondary: #8B949E;
+  --color-text-muted: #6E7681;
+  --color-text-inverse: #0D1117;
+  --color-success: #3FB950;
+  --color-warning: #D29922;
+  --color-error: #F85149;
+  --color-info: #58A6FF;
 
-  --term-black: #45475a;
-  --term-red: #f38ba8;
-  --term-green: #a6e3a1;
-  --term-yellow: #f9e2af;
-  --term-blue: #89b4fa;
-  --term-magenta: #f5c2e7;
-  --term-cyan: #94e2d5;
-  --term-white: #bac2de;
+  /* Spacing (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
 
-  --term-bright-black: #585b70;
-  --term-bright-red: #f38ba8;
-  --term-bright-green: #a6e3a1;
-  --term-bright-yellow: #f9e2af;
-  --term-bright-blue: #89b4fa;
-  --term-bright-magenta: #f5c2e7;
-  --term-bright-cyan: #94e2d5;
-  --term-bright-white: #cdd6f4;
+  /* Border Radius */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 
-  /* Derived UI colors */
-  --ui-bg: #1e1e2e;
-  --ui-bg-secondary: #181825;
-  --ui-bg-tertiary: #313244;
-  --ui-border: #313244;
-  --ui-fg: #cdd6f4;
-  --ui-fg-muted: #a6adc8;
-  --ui-fg-dim: #6c7086;
-  --ui-accent: #89b4fa;
-}
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-focus: 0 0 0 2px var(--color-primary);
+
+  /* Transitions */
+  --transition-fast: 100ms ease;
+  --transition-base: 150ms ease;
+  --transition-slow: 250ms ease-out;
 
   /* Header */
-  --header-bg-rgb: 24, 24, 37;
   --header-height: 38px;
+
+  /* Terminal Colors (overridden by theme) */
+  --term-fg: #F0F6FC;
+  --term-bg: #0D1117;
+  --term-cursor: #D4A857;
+  --term-selection-bg: rgba(88, 230, 217, 0.3);
+  --term-selection-fg: #F0F6FC;
+  --term-black: #484F58;
+  --term-red: #FF7B72;
+  --term-green: #3FB950;
+  --term-yellow: #D29922;
+  --term-blue: #58A6FF;
+  --term-magenta: #BC8CFF;
+  --term-cyan: #58E6D9;
+  --term-white: #B1BAC4;
+  --term-bright-black: #6E7681;
+  --term-bright-red: #FFA198;
+  --term-bright-green: #56D364;
+  --term-bright-yellow: #E3B341;
+  --term-bright-blue: #79C0FF;
+  --term-bright-magenta: #D2A8FF;
+  --term-bright-cyan: #76E4F7;
+  --term-bright-white: #F0F6FC;
 }
 
-html,
-body,
-#root {
+/* ─── Base ─── */
+html, body, #root {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background-color: transparent;
-  color: var(--ui-fg);
-  font-family: var(--font-mono);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 20px;
 }
 
-/* Window container with transparency */
+/* ─── Window Root ─── */
 .window-root {
-  background: rgba(var(--header-bg-rgb), 0.88);
+  background: rgba(13, 17, 23, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-muted);
   border-radius: 10px;
   overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
 }
 
-/* When maximized, no border-radius */
-.window-root.maximized {
-  border-radius: 0;
-}
+/* ─── Scrollbar ─── */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Hide scrollbar in tab overflow */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
 }
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
-/* Platform-specific: hide macOS spacer on Windows/Linux */
-.macos-only {
-  display: none;
-}
+/* ─── Platform: macOS traffic lights spacer ─── */
+.macos-only { display: none; }
+.non-macos-only { display: flex; }
 
-/* Platform-specific: hide window controls on macOS (native traffic lights) */
-@supports (-webkit-touch-callout: none) {
-  .macos-only {
-    display: block;
-  }
-  .non-macos-only {
-    display: none;
-  }
-}
+/* macOS detection via Tauri-injected platform class */
+html[data-platform="macos"] .macos-only { display: block; }
+html[data-platform="macos"] .non-macos-only { display: none !important; }

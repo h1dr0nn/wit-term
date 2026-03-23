@@ -13,23 +13,38 @@ export function SessionSidebar() {
   }, [createNewSession]);
 
   return (
-    <aside className="w-52 bg-[var(--ui-bg-secondary)] border-r border-[var(--ui-border)] flex flex-col select-none">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--ui-border)]">
-        <span className="text-xs font-semibold text-[var(--ui-fg-muted)] uppercase tracking-wider">
-          Sessions
-        </span>
-        <button
-          onClick={handleNewSession}
-          className="text-[var(--ui-fg-dim)] hover:text-[var(--ui-fg)] text-lg leading-none px-1"
-          title="New session"
-        >
-          +
-        </button>
+    <aside
+      role="complementary"
+      aria-label="Sessions"
+      style={{
+        width: 240,
+        background: "var(--color-surface)",
+        borderRight: "1px solid var(--color-border-muted)",
+      }}
+      className="flex flex-col select-none shrink-0"
+    >
+      {/* Header - 48px */}
+      <div
+        style={{
+          height: 48,
+          padding: "0 var(--sp-3)",
+          borderBottom: "1px solid var(--color-border-muted)",
+        }}
+        className="flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2">
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
+            Wit
+          </span>
+        </div>
       </div>
 
       {/* Session list */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div
+        role="listbox"
+        className="flex-1 overflow-y-auto"
+        style={{ padding: "var(--sp-2) 0" }}
+      >
         {sessions.map((session, idx) => (
           <SessionRow
             key={session.id}
@@ -40,12 +55,25 @@ export function SessionSidebar() {
             onClose={closeSession}
           />
         ))}
-        {sessions.length === 0 && (
-          <div className="px-3 py-4 text-center text-[var(--ui-fg-dim)] text-xs">
-            No sessions
-          </div>
-        )}
       </div>
+
+      {/* Footer - New Session button */}
+      <button
+        onClick={handleNewSession}
+        style={{
+          height: 40,
+          borderTop: "1px solid var(--color-border-muted)",
+          color: "var(--color-text-secondary)",
+          fontSize: 13,
+        }}
+        className="flex items-center justify-center gap-2 shrink-0 hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <line x1="8" y1="3" x2="8" y2="13" />
+          <line x1="3" y1="8" x2="13" y2="8" />
+        </svg>
+        <span>New Session</span>
+      </button>
     </aside>
   );
 }
@@ -77,42 +105,94 @@ const SessionRow = React.memo(function SessionRow({
     [onClose, session.id],
   );
 
-  const title = session.title || `Terminal ${index + 1}`;
-  const cwd = cwdShort(session.cwd);
+  const title = session.title || `Session ${index + 1}`;
+  const cwd = cwdBasename(session.cwd);
 
   return (
     <div
+      role="option"
+      aria-selected={isActive}
       onClick={handleClick}
-      className={`group flex items-center gap-2 px-3 py-1.5 cursor-pointer mx-1 rounded ${
-        isActive
-          ? "bg-[var(--ui-bg-tertiary)] text-[var(--ui-fg)]"
-          : "text-[var(--ui-fg-muted)] hover:bg-[var(--ui-bg)]"
-      }`}
+      style={{
+        height: 36,
+        margin: "0 var(--sp-2)",
+        padding: "var(--sp-2) var(--sp-3)",
+        borderRadius: "var(--radius-sm)",
+        borderLeft: isActive ? "2px solid var(--color-primary)" : "2px solid transparent",
+        background: isActive ? "var(--color-surface-active)" : "transparent",
+        color: isActive ? "var(--color-text)" : "var(--color-text-secondary)",
+        cursor: "pointer",
+        transition: "var(--transition-fast)",
+      }}
+      className="group flex items-center gap-2"
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.background = "var(--color-surface-hover)";
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.background = "transparent";
+      }}
     >
+      {/* Terminal icon */}
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke={isActive ? "var(--color-primary)" : "currentColor"}
+        strokeWidth="1.5"
+        className="shrink-0"
+      >
+        <polyline points="4,4 8,8 4,12" />
+        <line x1="9" y1="12" x2="13" y2="12" />
+      </svg>
+
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-[var(--ui-fg-dim)]">{index + 1}</span>
-          <span className="text-sm truncate">{title}</span>
+        <div
+          style={{
+            fontSize: 13,
+            lineHeight: "18px",
+            fontWeight: isActive ? 500 : 400,
+          }}
+          className="truncate"
+        >
+          {title}
         </div>
         {cwd && (
-          <div className="text-xs text-[var(--ui-fg-dim)] truncate">{cwd}</div>
+          <div
+            style={{
+              fontSize: 11,
+              lineHeight: "14px",
+              color: "var(--color-text-muted)",
+            }}
+            className="truncate"
+          >
+            {cwd}
+          </div>
         )}
       </div>
+
+      {/* Close button - visible on hover */}
       <button
         onClick={handleClose}
-        className="shrink-0 w-4 h-4 flex items-center justify-center rounded text-[var(--ui-fg-dim)] hover:text-[var(--term-red)] hover:bg-[var(--ui-border)] opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: "var(--radius-sm)",
+          color: "var(--color-text-muted)",
+        }}
+        className="shrink-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--color-error)] hover:bg-[var(--color-surface-active)]"
       >
-        x
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <line x1="2" y1="2" x2="8" y2="8" />
+          <line x1="8" y1="2" x2="2" y2="8" />
+        </svg>
       </button>
     </div>
   );
 });
 
-function cwdShort(cwd: string): string {
+function cwdBasename(cwd: string): string {
   if (!cwd) return "";
-  const normalized = cwd.replace(/\\/g, "/");
-  const home = "~";
-  const parts = normalized.split("/").filter(Boolean);
-  if (parts.length <= 2) return normalized;
-  return `${home}/${parts.slice(-2).join("/")}`;
+  const parts = cwd.replace(/\\/g, "/").split("/").filter(Boolean);
+  return parts[parts.length - 1] || "";
 }

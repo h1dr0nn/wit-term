@@ -361,7 +361,7 @@ export function TerminalView() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 relative flex flex-col bg-[var(--ui-bg)] focus:outline-none overflow-hidden p-1"
+      className="flex-1 relative flex flex-col bg-[var(--color-bg)] focus:outline-none overflow-hidden p-1"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
