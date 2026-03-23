@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { TerminalView } from "./components/terminal/TerminalView";
 import { TabBar } from "./components/tabs/TabBar";
 import { SessionSidebar } from "./components/sidebar/SessionSidebar";
@@ -19,12 +19,14 @@ function App() {
   // Initialize theme system
   useTheme();
 
-  // Create first session on mount
+  // Create first session on mount (guard against StrictMode double-invoke)
+  const initRef = useRef(false);
   useEffect(() => {
-    if (sessions.length === 0) {
+    if (!initRef.current) {
+      initRef.current = true;
       createNewSession();
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [createNewSession]);
 
   const toggleSidebar = useCallback(() => setSidebarVisible((v) => !v), []);
   const toggleContextSidebar = useCallback(
