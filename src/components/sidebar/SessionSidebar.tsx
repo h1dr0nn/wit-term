@@ -51,7 +51,7 @@ export function SessionSidebar({ onOpenSettings, onOpenPalette }: SessionSidebar
     <aside
       role="complementary"
       aria-label="Sessions"
-      className="flex flex-col select-none shrink-0 border-r border-[var(--color-border-muted)] bg-[var(--color-surface)]/60 backdrop-blur-xl"
+      className="flex flex-col select-none shrink-0 border-r border-[var(--color-border-muted)] bg-[var(--color-surface)]"
       style={{ width: 240 }}
     >
       {/* ── Header ── */}
@@ -92,7 +92,7 @@ export function SessionSidebar({ onOpenSettings, onOpenPalette }: SessionSidebar
       {/* ── Search bar ── */}
       <div className="shrink-0 p-3">
         <div
-          className="flex items-center gap-1.5 h-8 px-3 bg-[var(--color-bg)]/40 border border-[var(--color-border)] rounded-lg focus-within:border-[var(--color-primary-muted)] focus-within:ring-1 focus-within:ring-[var(--color-primary-muted)] transition-all"
+          className="flex items-center gap-1.5 h-8 px-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg focus-within:border-[var(--color-primary-muted)] focus-within:ring-1 focus-within:ring-[var(--color-primary-muted)] transition-all"
         >
           <Search size={13} strokeWidth={2} className="text-[var(--color-text-muted)]" />
           <input
@@ -167,29 +167,32 @@ const SessionRow = React.memo(function SessionRow({
       aria-selected={isActive}
       onClick={handleClick}
       style={{
-        height: 36,
-        margin: "0 var(--sp-2)",
-        padding: "var(--sp-2) var(--sp-3)",
-        borderRadius: "var(--radius-sm)",
-        borderLeft: isActive ? "2px solid var(--color-primary)" : "2px solid transparent",
+        height: 48,
+        margin: "2px var(--sp-2)",
+        padding: "0 var(--sp-3)",
+        borderRadius: "var(--radius-md)",
         background: isActive ? "var(--color-surface-active)" : "transparent",
         color: isActive ? "var(--color-text)" : "var(--color-text-secondary)",
         cursor: "pointer",
         transition: "var(--transition-fast)",
       }}
-      className="group flex items-center gap-2"
+      className="group flex items-center gap-3"
       onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--color-surface-hover)"; }}
       onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
     >
       <Terminal 
-        size={16} 
-        strokeWidth={2} 
-        color={isActive ? "var(--color-primary)" : "currentColor"} 
+        size={18} 
+        strokeWidth={isActive ? 2.5 : 2} 
+        color={isActive ? "var(--color-primary)" : "var(--color-text-muted)"} 
         className="shrink-0" 
       />
-      <div className="flex-1 min-w-0">
-        <div style={{ fontSize: 13, lineHeight: "18px", fontWeight: isActive ? 500 : 400 }} className="truncate">{title}</div>
-        {cwd && <div style={{ fontSize: 11, lineHeight: "14px", color: "var(--color-text-muted)" }} className="truncate">{cwd}</div>}
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-text)" }} className="truncate">
+          {cwd || "New Session"}
+        </div>
+        <div style={{ fontSize: 10.5, color: "var(--color-text-muted)", opacity: 0.8 }} className="truncate">
+          {title}
+        </div>
       </div>
       <button onClick={handleClose}
         style={{ width: 20, height: 20, borderRadius: "var(--radius-sm)", color: "var(--color-text-muted)" }}
@@ -197,6 +200,7 @@ const SessionRow = React.memo(function SessionRow({
         <X size={10} strokeWidth={2.5} />
       </button>
     </div>
+
   );
 });
 

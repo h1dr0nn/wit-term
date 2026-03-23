@@ -40,6 +40,10 @@ pub enum SessionEvent {
         session_id: SessionId,
         exit_code: i32,
     },
+    /// Terminal bell (BEL character).
+    Bell {
+        session_id: SessionId,
+    },
 }
 
 /// Manages all active terminal sessions.
@@ -177,6 +181,14 @@ impl SessionManager {
                 });
             })
             .map_err(|e| format!("Failed to spawn reader thread: {e}"))?;
+
+        // Emit initial CWD so frontend has it immediately
+        // (Windows shells don't send OSC 7)
+        let initial_cwd = config.cwd.to_string_lossy().into_owned();
+        let _ = event_tx.send(SessionEvent::CwdChanged {
+            session_id: id.clone(),
+            cwd: initial_cwd,
+        });
 
         let session = Session {
             id: id.clone(),

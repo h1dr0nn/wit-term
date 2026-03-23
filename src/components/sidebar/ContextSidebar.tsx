@@ -6,13 +6,16 @@ import { useSessionStore } from "../../stores/sessionStore";
 
 interface ContextInfo {
   provider: string;
-  detected: boolean;
-  [key: string]: unknown;
+  data: Record<string, unknown>;
+  detected_markers?: string[];
 }
 
 interface ProjectContext {
+  project_root: string | null;
   cwd: string;
-  providers: ContextInfo[];
+  providers: Record<string, ContextInfo>;
+  last_updated: number;
+  completion_sets: string[];
 }
 
 export function ContextSidebar() {
@@ -36,7 +39,7 @@ export function ContextSidebar() {
   return (
     <aside
       role="complementary"
-      className="flex flex-col select-none shrink-0 border-l border-[var(--color-border-muted)] bg-[var(--color-surface)]/60 backdrop-blur-xl"
+      className="flex flex-col select-none shrink-0 border-l border-[var(--color-border-muted)] bg-[var(--color-surface)]"
       style={{ width: 280 }}
     >
       {/* Header - 48px */}
@@ -57,11 +60,11 @@ export function ContextSidebar() {
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {context?.providers.map((provider) => (
+        {context?.providers && Object.values(context.providers).map((provider) => (
           <ProviderSection key={provider.provider} provider={provider} />
         ))}
 
-        {!context?.providers.length && cwd && (
+        {(!context?.providers || Object.keys(context.providers).length === 0) && cwd && (
           <div className="py-20 px-4 text-center text-xs text-[var(--color-text-muted)]">
             No project detected
           </div>
@@ -78,6 +81,9 @@ const PROVIDER_META: Record<string, { label: string; color: string }> = {
   rust: { label: "Rust", color: "var(--color-accent)" },
   python: { label: "Python", color: "var(--color-info)" },
   docker: { label: "Docker", color: "var(--color-primary)" },
+  go: { label: "Go", color: "var(--color-info)" },
+  java: { label: "Java", color: "var(--color-warning)" },
+  generic: { label: "Project", color: "var(--color-text-muted)" },
 };
 
 function ProviderSection({ provider }: { provider: ContextInfo }) {
@@ -87,9 +93,7 @@ function ProviderSection({ provider }: { provider: ContextInfo }) {
     color: "var(--color-text-muted)",
   };
 
-  const dataEntries = Object.entries(provider).filter(
-    ([k]) => k !== "provider" && k !== "detected",
-  );
+  const dataEntries = Object.entries(provider.data || {});
 
   return (
     <div style={{ borderBottom: "1px solid var(--color-border-muted)" }}>
@@ -173,12 +177,15 @@ function ProviderSection({ provider }: { provider: ContextInfo }) {
 }
 
 function formatValue(key: string, value: unknown): string {
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, 5).join(", ") + (value.length > 5 ? ` (+${value.length - 5})` : "");
+  }
   const str = String(value);
   if (key === "status") {
     return str === "clean" ? "Clean" : str === "dirty" ? "Dirty" : str;
-  }
-  if (key === "scripts") {
-    return str.split(",").slice(0, 5).join(", ");
   }
   return str;
 }

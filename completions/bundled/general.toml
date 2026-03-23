@@ -1,3 +1,5 @@
+wit_completion_version = "1.0"
+
 [command]
 name = "ls"
 description = "List directory contents"

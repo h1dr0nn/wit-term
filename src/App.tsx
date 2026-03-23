@@ -5,6 +5,7 @@ import { SessionSidebar } from "./components/sidebar/SessionSidebar";
 import { ContextSidebar } from "./components/sidebar/ContextSidebar";
 import { SettingsModal } from "./components/settings/SettingsModal";
 import { CommandPalette } from "./components/CommandPalette";
+import { Notifications } from "./components/Notifications";
 import { useSessionStore } from "./stores/sessionStore";
 import { useTheme } from "./hooks/useTheme";
 
@@ -84,6 +85,7 @@ function App() {
         onToggleSidebar={toggleSidebar}
         onToggleContextSidebar={toggleContextSidebar}
       />
+      <Notifications />
     </div>
   );
 }

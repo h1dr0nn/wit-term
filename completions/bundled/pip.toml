@@ -1,3 +1,5 @@
+wit_completion_version = "1.0"
+
 [command]
 name = "pip"
 description = "Python package installer"

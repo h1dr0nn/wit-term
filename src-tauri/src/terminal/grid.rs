@@ -218,6 +218,11 @@ impl Grid {
         self.scrollback.clear();
     }
 
+    /// Get a reference to the scrollback buffer.
+    pub fn scrollback(&self) -> &VecDeque<Vec<Cell>> {
+        &self.scrollback
+    }
+
     /// Erase from cursor to end of line.
     pub fn erase_line_right(&mut self, row: usize, col: usize) {
         for c in col..self.cols {

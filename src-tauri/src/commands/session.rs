@@ -1,11 +1,14 @@
 //! Tauri IPC command handlers for session management.
 
+use std::path::Path;
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use crate::context::ProjectContext;
 use crate::session::{SessionEvent, SessionInfo, SessionManager};
 use crate::terminal::GridSnapshot;
+use crate::ContextEngineState;
 
 /// Shared state wrapper for SessionManager.
 pub struct SessionManagerState(pub Mutex<SessionManager>);
@@ -34,6 +37,17 @@ struct TitleChangedPayload {
     title: String,
 }
 
+#[derive(Clone, serde::Serialize)]
+struct ContextChangedPayload {
+    session_id: String,
+    context: ProjectContext,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct BellPayload {
+    session_id: String,
+}
+
 /// Initialize session event forwarding to the frontend.
 pub fn init_event_forwarding(app: &AppHandle) {
     let manager = app.state::<SessionManagerState>();
@@ -49,25 +63,46 @@ pub fn init_event_forwarding(app: &AppHandle) {
                         session_id,
                         snapshot,
                     } => {
-                        let _ = app_handle.emit(
-                            "grid_update",
-                            GridUpdatePayload {
-                                session_id,
-                                snapshot,
-                            },
-                        );
+                        let payload = GridUpdatePayload {
+                            session_id,
+                            snapshot,
+                        };
+                        // Emit both documented and current event names
+                        let _ = app_handle.emit("grid_update", payload.clone());
+                        let _ = app_handle.emit("terminal_output", payload);
                     }
                     SessionEvent::CwdChanged { session_id, cwd } => {
                         let _ = app_handle.emit(
                             "cwd_changed",
-                            CwdChangedPayload { session_id, cwd },
+                            CwdChangedPayload {
+                                session_id: session_id.clone(),
+                                cwd: cwd.clone(),
+                            },
                         );
+
+                        // Trigger context scan and emit context_changed
+                        if let Some(context_state) =
+                            app_handle.try_state::<ContextEngineState>()
+                        {
+                            let mut engine = context_state.0.lock().unwrap();
+                            let context = engine.scan(Path::new(&cwd));
+                            let _ = app_handle.emit(
+                                "context_changed",
+                                ContextChangedPayload {
+                                    session_id,
+                                    context,
+                                },
+                            );
+                        }
                     }
                     SessionEvent::TitleChanged { session_id, title } => {
-                        let _ = app_handle.emit(
-                            "title_changed",
-                            TitleChangedPayload { session_id, title },
-                        );
+                        let payload = TitleChangedPayload {
+                            session_id,
+                            title,
+                        };
+                        // Emit both documented and current event names
+                        let _ = app_handle.emit("title_changed", payload.clone());
+                        let _ = app_handle.emit("terminal_title", payload);
                     }
                     SessionEvent::Exited {
                         session_id,
@@ -81,24 +116,52 @@ pub fn init_event_forwarding(app: &AppHandle) {
                             },
                         );
                     }
+                    SessionEvent::Bell { session_id } => {
+                        let _ = app_handle.emit(
+                            "terminal_bell",
+                            BellPayload { session_id },
+                        );
+                    }
                 }
             }
         })
         .expect("Failed to spawn event forwarder thread");
 }
 
+#[derive(Clone, serde::Serialize)]
+struct CreateSessionResult {
+    id: String,
+    cwd: String,
+}
+
 #[tauri::command]
 pub fn create_session(
     cwd: Option<String>,
     state: State<'_, SessionManagerState>,
-) -> Result<String, String> {
+) -> Result<CreateSessionResult, String> {
     let mut manager = state.0.lock().unwrap();
-    let config = cwd.map(|dir| {
+    let config = if let Some(dir) = &cwd {
         let mut c = crate::pty::PtyConfig::default();
         c.cwd = std::path::PathBuf::from(dir);
-        c
-    });
-    manager.create_session(config)
+        Some(c)
+    } else {
+        None
+    };
+    // Determine the actual CWD that will be used
+    let actual_cwd = config
+        .as_ref()
+        .map(|c| c.cwd.to_string_lossy().into_owned())
+        .unwrap_or_else(|| {
+            crate::pty::PtyConfig::default()
+                .cwd
+                .to_string_lossy()
+                .into_owned()
+        });
+    let id = manager.create_session(config)?;
+    Ok(CreateSessionResult {
+        id,
+        cwd: actual_cwd,
+    })
 }
 
 #[tauri::command]
@@ -139,6 +202,16 @@ pub fn resize_session(
 
 #[tauri::command]
 pub fn get_snapshot(
+    session_id: String,
+    state: State<'_, SessionManagerState>,
+) -> Result<GridSnapshot, String> {
+    let manager = state.0.lock().unwrap();
+    manager.get_snapshot(&session_id)
+}
+
+/// Alias for get_snapshot to match documented API.
+#[tauri::command]
+pub fn get_session_grid(
     session_id: String,
     state: State<'_, SessionManagerState>,
 ) -> Result<GridSnapshot, String> {

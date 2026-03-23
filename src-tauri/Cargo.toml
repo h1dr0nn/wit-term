@@ -49,6 +49,10 @@ toml = "0.8"
 dirs = "6"
 tauri-plugin-dialog = "2.6.0"
 
+# File watching
+notify = "7"
+notify-debouncer-mini = "0.5"
+
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.29", features = ["term", "process"] }
 libc = "0.2"

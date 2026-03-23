@@ -69,16 +69,28 @@ impl Emulator {
     }
 
     /// Get a full grid snapshot for the frontend.
+    /// Includes scrollback rows followed by visible screen rows so the
+    /// total `rows` array grows with terminal history.
     pub fn snapshot(&self) -> GridSnapshot {
-        let rows: Vec<Vec<CellData>> = (0..self.grid.rows)
-            .map(|r| {
+        let scrollback = self.grid.scrollback();
+        let scrollback_len = scrollback.len();
+
+        // Scrollback rows
+        let mut rows: Vec<Vec<CellData>> = scrollback
+            .iter()
+            .map(|row| row.iter().map(CellData::from).collect())
+            .collect();
+
+        // Visible screen rows
+        for r in 0..self.grid.rows {
+            rows.push(
                 self.grid
                     .row(r)
                     .iter()
                     .map(CellData::from)
-                    .collect()
-            })
-            .collect();
+                    .collect(),
+            );
+        }
 
         let blocks: Vec<BlockInfo> = self
             .blocks
@@ -88,9 +100,9 @@ impl Emulator {
                 let command = self.extract_row_text(b.command_row);
                 BlockInfo {
                     id: b.id,
-                    prompt_row: b.prompt_row,
-                    output_start_row: b.output_start_row,
-                    output_end_row: b.output_end_row,
+                    prompt_row: b.prompt_row + scrollback_len,
+                    output_start_row: b.output_start_row.map(|r| r + scrollback_len),
+                    output_end_row: b.output_end_row.map(|r| r + scrollback_len),
                     exit_code: b.exit_code,
                     cwd: b.cwd.clone(),
                     command,
@@ -100,11 +112,12 @@ impl Emulator {
 
         GridSnapshot {
             rows,
-            cursor_row: self.cursor.row,
+            cursor_row: self.cursor.row + scrollback_len,
             cursor_col: self.cursor.col,
             cursor_visible: self.cursor.visible && self.modes.cursor_visible,
             cursor_shape: self.cursor.shape,
             blocks,
+            scrollback_len,
         }
     }
 

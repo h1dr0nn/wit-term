@@ -79,11 +79,13 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       onKeyDown={handleKeyDown}
     >
       <div
-        className="modal-content w-[720px] h-[520px] glass border border-[var(--color-border)] rounded-xl shadow-2xl flex overflow-hidden"
+        className="modal-content w-[800px] h-[580px] bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-2xl flex overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sidebar */}
-        <div className="w-56 bg-[var(--color-surface)]/50 border-r border-[var(--color-border)] flex flex-col p-4">
+        <div
+          className="flex flex-col select-none shrink-0 w-64 border-r border-[var(--color-border-muted)] bg-[var(--color-surface)] p-4"
+        >
           <div className="px-3 py-4 mb-2">
             <h2 className="text-lg font-bold tracking-tight text-[var(--color-text)]">Settings</h2>
           </div>
@@ -93,12 +95,13 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[15px] transition-all ${
                   activeTab === tab.id
-                    ? "bg-[var(--color-primary-muted)] text-[var(--color-primary)] shadow-sm"
-                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                    ? "bg-[var(--color-primary)] text-white font-semibold shadow-md translate-x-1"
+                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] font-medium"
                 }`}
               >
+
                 <tab.icon size={18} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
                 {tab.label}
               </button>
@@ -113,7 +116,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col bg-[var(--color-surface)]/30 backdrop-blur-md">
+        <div className="flex-1 flex flex-col bg-[var(--color-bg)]">
           {/* Content Header */}
           <div className="h-14 flex items-center justify-between px-8 border-b border-[var(--color-border-muted)] shrink-0">
             <span className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
@@ -126,6 +129,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <X size={18} />
             </button>
           </div>
+
 
           {/* Scrolling Content */}
           <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
@@ -171,14 +175,12 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                     </SettingRow>
 
                     <SettingRow label="Font Size" description={`${config.font_size}px`}>
-                      <input
-                        type="range"
+                      <Slider
                         min={8}
                         max={24}
                         step={1}
                         value={config.font_size}
-                        onChange={(e) => updateConfig({ font_size: parseFloat(e.target.value) })}
-                        className="w-32 accent-[var(--color-primary)]"
+                        onChange={(v) => updateConfig({ font_size: v })}
                       />
                     </SettingRow>
                   </SettingGroup>
@@ -293,4 +295,54 @@ function Toggle({
     </button>
   );
 }
+
+function Slider({
+  min,
+  max,
+  step,
+  value,
+  onChange,
+}: {
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const percentage = ((value - min) / (max - min)) * 100;
+
+  return (
+    <div className="w-40 relative flex items-center group py-2">
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-1 bg-[var(--color-border-muted)] rounded-full appearance-none cursor-pointer outline-none relative z-10"
+        style={{
+          background: `linear-gradient(to right, var(--color-primary) ${percentage}%, var(--color-border-muted) ${percentage}%)`,
+        }}
+      />
+      <style>{`
+        input[type='range']::-webkit-slider-thumb {
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: white;
+          border: 2px solid var(--color-primary);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        input[type='range']:hover::-webkit-slider-thumb {
+          transform: scale(1.2);
+        }
+      `}</style>
+    </div>
+  );
+}
+
 

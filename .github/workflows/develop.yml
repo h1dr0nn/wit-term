@@ -1,12 +1,12 @@
-name: Release
+name: Development Build
 
 on:
   push:
     tags:
-      - 'release-v*'
+      - 'develop-v*'
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: develop-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -72,18 +72,17 @@ jobs:
       - name: Run tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: Build Tauri app (signed)
+      - name: Build Tauri app (unsigned)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Wit Terminal ${{ github.ref_name }}'
+          releaseName: 'Wit Terminal ${{ github.ref_name }} (Development)'
           releaseBody: |
+            **Development build** — unsigned, for testing only.
+
             See the [CHANGELOG](https://github.com/nickcdryan/wit-term/blob/main/CHANGELOG.md) for details.
-          releaseDraft: false
-          prerelease: false
+          releaseDraft: true
+          prerelease: true
           args: ${{ matrix.config.args }}
-          updaterJsonPreferNsis: true

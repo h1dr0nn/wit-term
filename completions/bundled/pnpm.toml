@@ -1,3 +1,5 @@
+wit_completion_version = "1.0"
+
 [command]
 name = "pnpm"
 description = "Fast, disk space efficient package manager"

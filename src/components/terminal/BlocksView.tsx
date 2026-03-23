@@ -1,100 +1,267 @@
-import React, { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import {
-  CheckCircle,
-  XCircle,
-  Loader,
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  Copy,
-  RotateCw,
-} from "lucide-react";
-import type { CellData, GridSnapshot, BlockInfo } from "../../stores/terminalStore";
+import React, { useRef, useEffect, useMemo } from "react";
+import { Copy } from "lucide-react";
+import type { CellData, GridSnapshot, BlockInfo, FrontendBlock } from "../../stores/terminalStore";
 import { colorToCss } from "../../utils/colors";
 
 interface BlocksViewProps {
   snapshot: GridSnapshot;
   onRerun?: (command: string) => void;
+  selectedBlockIndex: number | null;
+  onSelectBlock?: (index: number) => void;
+  frontendBlocks?: FrontendBlock[];
 }
 
-export function BlocksView({ snapshot, onRerun }: BlocksViewProps) {
+export function BlocksView({
+  snapshot,
+  onRerun,
+  selectedBlockIndex,
+  onSelectBlock,
+  frontendBlocks,
+}: BlocksViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const prevBlockCountRef = useRef(0);
+  const prevRowCountRef = useRef(0);
 
-  // Auto-scroll to bottom when new blocks appear
+  // Auto-scroll when new output appears
   useEffect(() => {
-    if (snapshot.blocks.length > prevBlockCountRef.current) {
+    const rowCount = snapshot.rows.length;
+    if (rowCount > prevRowCountRef.current) {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
     }
-    prevBlockCountRef.current = snapshot.blocks.length;
-  }, [snapshot.blocks.length]);
+    prevRowCountRef.current = rowCount;
+  }, [snapshot.rows.length]);
 
-  // If no blocks yet (no shell integration), fall back to raw grid
-  if (snapshot.blocks.length === 0) {
-    return <RawGrid snapshot={snapshot} scrollRef={scrollRef} />;
-  }
+  const hasRustBlocks = snapshot.blocks.length > 0;
+  const hasFrontendBlocks = (frontendBlocks?.length ?? 0) > 0;
 
   return (
     <div
       ref={scrollRef}
       className="flex-1 overflow-y-auto"
-      style={{ padding: "var(--sp-2) var(--sp-3)" }}
+      style={{
+        background: "var(--term-bg)",
+        color: "var(--term-fg)",
+        fontFamily: "var(--font-mono)",
+        fontSize: 14,
+        lineHeight: "20px",
+        padding: "var(--sp-3) var(--sp-4)",
+      }}
     >
-      <div className="flex flex-col gap-2">
-        {snapshot.blocks.map((block, idx) => {
-          const isLast = idx === snapshot.blocks.length - 1;
-          const isRunning = isLast && block.exit_code === null && block.output_start_row !== null;
+      {hasRustBlocks ? (
+        snapshot.blocks.map((block, idx) => {
+          const isSelected = selectedBlockIndex === idx;
           return (
-            <CommandBlock
-              key={block.id}
-              block={block}
-              rows={snapshot.rows}
-              isRunning={isRunning}
-              onRerun={onRerun}
-            />
+            <React.Fragment key={block.id}>
+              {idx > 0 && <Divider />}
+              <RustBlock
+                block={block}
+                rows={snapshot.rows}
+                isSelected={isSelected}
+                onSelect={() => onSelectBlock?.(idx)}
+                onRerun={onRerun}
+              />
+            </React.Fragment>
           );
-        })}
-      </div>
+        })
+      ) : hasFrontendBlocks ? (
+        frontendBlocks!.map((fb, idx) => {
+          const isSelected = selectedBlockIndex === idx;
+          const startRow = fb.gridRowStart;
+          const endRow = fb.gridRowEnd ?? snapshot.rows.length;
+          const outputRows = snapshot.rows.slice(startRow, endRow);
+
+          // Calculate duration if next block exists or command is finished
+          const nextBlock = frontendBlocks![idx + 1];
+          const durationMs = nextBlock
+            ? nextBlock.submittedAt - fb.submittedAt
+            : undefined;
+
+          return (
+            <React.Fragment key={fb.id}>
+              {idx > 0 && <Divider />}
+              <FlatBlock
+                command={fb.command}
+                outputRows={outputRows}
+                isSelected={isSelected}
+                onSelect={() => onSelectBlock?.(idx)}
+                onRerun={onRerun}
+                cwd={fb.cwd}
+                gitBranch={fb.gitBranch}
+                durationMs={durationMs}
+              />
+            </React.Fragment>
+          );
+        })
+      ) : (
+        <div
+          style={{
+            color: "var(--color-text-muted)",
+            fontSize: 13,
+            paddingTop: 60,
+            textAlign: "center",
+          }}
+        >
+        </div>
+      )}
     </div>
   );
 }
 
-/** Fallback: raw grid rendering when no blocks detected */
-function RawGrid({
-  snapshot,
-  scrollRef,
+/** Horizontal divider between blocks */
+function Divider() {
+  return (
+    <div
+      style={{
+        height: 1,
+        background: "var(--color-border-muted)",
+        margin: "12px 0",
+      }}
+    />
+  );
+}
+
+/** Flat block for frontend-driven blocks (no shell integration) */
+function FlatBlock({
+  command,
+  outputRows,
+  isSelected,
+  onSelect,
+  onRerun,
+  cwd,
+  gitBranch,
+  durationMs,
 }: {
-  snapshot: GridSnapshot;
-  scrollRef: React.RefObject<HTMLDivElement | null>;
+  command: string;
+  outputRows: CellData[][];
+  isSelected: boolean;
+  onSelect?: () => void;
+  onRerun?: (command: string) => void;
+  cwd?: string;
+  gitBranch?: string;
+  durationMs?: number;
 }) {
-  // Auto-scroll to cursor
+  const blockRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [snapshot.cursor_row, scrollRef]);
+    if (isSelected && blockRef.current) {
+      blockRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [isSelected]);
+
+  // Trim trailing empty rows
+  const trimmedRows = useMemo(() => {
+    let end = outputRows.length;
+    while (end > 0) {
+      const text = outputRows[end - 1].map((c) => c.content || "").join("").trim();
+      if (text) break;
+      end--;
+    }
+    return outputRows.slice(0, end);
+  }, [outputRows]);
+
+  const handleCopy = () => {
+    const text = trimmedRows
+      .map((row) => row.map((c) => c.content || " ").join("").trimEnd())
+      .join("\n");
+    navigator.clipboard.writeText(text);
+  };
+
+  // Format duration
+  const durationStr = durationMs != null
+    ? durationMs >= 1000
+      ? `${(durationMs / 1000).toFixed(3)}s`
+      : `${durationMs}ms`
+    : null;
 
   return (
     <div
-      ref={scrollRef}
-      className="flex-1 overflow-y-auto font-mono text-sm leading-[1.3] whitespace-pre"
-      style={{ padding: "var(--sp-2)" }}
+      ref={blockRef}
+      onClick={onSelect}
+      style={{
+        borderLeft: isSelected ? "2px solid var(--color-primary)" : "2px solid transparent",
+        paddingLeft: 10,
+      }}
     >
-      {snapshot.rows.map((row, i) => (
-        <TerminalRow key={i} cells={row} />
-      ))}
+      {/* Header: CWD + git branch + duration (dimmed) */}
+      <div
+        className="flex items-center gap-2 group"
+        style={{
+          opacity: 0.5,
+          fontSize: 12,
+          lineHeight: "18px",
+          marginBottom: 2,
+        }}
+      >
+        <span style={{ color: "var(--color-text-muted)", flex: 1 }}>
+          {cwd || ""}
+          {gitBranch && (
+            <span style={{ color: "var(--color-accent)" }}>{" "}git:{gitBranch}</span>
+          )}
+        </span>
+        {durationStr && (
+          <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
+            ({durationStr})
+          </span>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+          title="Copy output"
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--color-text-muted)",
+            cursor: "pointer",
+            padding: 2,
+          }}
+        >
+          <Copy size={12} />
+        </button>
+      </div>
+
+      {/* Command line */}
+      <div style={{ marginBottom: 4 }}>
+        <span
+          style={{ color: "var(--color-text)", fontWeight: 500, cursor: "pointer" }}
+          onClick={() => onRerun?.(command)}
+          title="Click to re-run"
+        >
+          {command}
+        </span>
+      </div>
+
+      {/* Output */}
+      {trimmedRows.length > 0 && (
+        <div className="whitespace-pre" style={{ color: "var(--term-fg)" }}>
+          {trimmedRows.map((row, i) => (
+            <TerminalRow key={i} cells={row} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-/** A single command block */
-interface CommandBlockProps {
+/** Flat block for Rust-side blocks (shell integration active) */
+function RustBlock({
+  block,
+  rows,
+  isSelected,
+  onSelect,
+  onRerun,
+}: {
   block: BlockInfo;
   rows: CellData[][];
-  isRunning: boolean;
+  isSelected: boolean;
+  onSelect?: () => void;
   onRerun?: (command: string) => void;
-}
+}) {
+  const blockRef = useRef<HTMLDivElement>(null);
 
-function CommandBlock({ block, rows, isRunning, onRerun }: CommandBlockProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    if (isSelected && blockRef.current) {
+      blockRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [isSelected]);
 
   const outputRows = useMemo(() => {
     if (block.output_start_row === null) return [];
@@ -103,141 +270,81 @@ function CommandBlock({ block, rows, isRunning, onRerun }: CommandBlockProps) {
     return rows.slice(start, end);
   }, [block, rows]);
 
-  const hasOutput = outputRows.length > 0;
-  const isSuccess = block.exit_code === 0;
-  const isError = block.exit_code !== null && block.exit_code !== 0;
-  const cwdDisplay = cwdShort(block.cwd);
+  const trimmedRows = useMemo(() => {
+    let end = outputRows.length;
+    while (end > 0) {
+      const text = outputRows[end - 1].map((c) => c.content || "").join("").trim();
+      if (text) break;
+      end--;
+    }
+    return outputRows.slice(0, end);
+  }, [outputRows]);
 
-  const handleCopy = useCallback(() => {
-    const text = outputRows
+  const isError = block.exit_code !== null && block.exit_code !== 0;
+
+  const handleCopy = () => {
+    const text = trimmedRows
       .map((row) => row.map((c) => c.content || " ").join("").trimEnd())
       .join("\n");
     navigator.clipboard.writeText(text);
-  }, [outputRows]);
-
-  const handleRerun = useCallback(() => {
-    if (onRerun && block.command) {
-      onRerun(block.command);
-    }
-  }, [onRerun, block.command]);
+  };
 
   return (
     <div
+      ref={blockRef}
+      onClick={onSelect}
       style={{
-        borderRadius: "var(--radius-lg)",
-        border: `1px solid ${isError ? "var(--color-error)" : isRunning ? "var(--color-primary)" : "var(--color-border-muted)"}`,
-        background: "var(--color-surface)",
-        overflow: "hidden",
-        opacity: isError ? 1 : 1,
+        borderLeft: isSelected
+          ? "2px solid var(--color-primary)"
+          : isError
+            ? "2px solid var(--color-error)"
+            : "2px solid transparent",
+        paddingLeft: 10,
       }}
     >
-      {/* Block header */}
+      {/* Command line */}
       <div
-        className="flex items-center gap-2 group cursor-pointer"
-        style={{
-          padding: "6px 10px",
-          background: isError
-            ? "rgba(248, 81, 73, 0.06)"
-            : isRunning
-              ? "rgba(88, 230, 217, 0.04)"
-              : "transparent",
-        }}
-        onClick={() => hasOutput && setCollapsed(!collapsed)}
+        className="flex items-center gap-2 group"
+        style={{ marginBottom: 4 }}
       >
-        {/* Expand/collapse toggle */}
-        {hasOutput && (
-          <span style={{ color: "var(--color-text-muted)" }}>
-            {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-          </span>
-        )}
-
-        {/* Status icon */}
-        {isRunning && <Loader size={14} className="animate-spin" style={{ color: "var(--color-primary)" }} />}
-        {isSuccess && <CheckCircle size={14} style={{ color: "var(--color-success)" }} />}
-        {isError && <XCircle size={14} style={{ color: "var(--color-error)" }} />}
-
-        {/* CWD */}
+        <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>$</span>
         <span
-          style={{
-            fontSize: 11,
-            color: "var(--color-text-muted)",
-            fontFamily: "var(--font-mono)",
-          }}
-          className="flex items-center gap-1"
-        >
-          <Folder size={10} />
-          {cwdDisplay}
-        </span>
-
-        {/* Command text */}
-        <span
-          style={{
-            fontSize: 13,
-            color: "var(--color-text)",
-            fontFamily: "var(--font-mono)",
-            fontWeight: 500,
-          }}
-          className="flex-1 truncate"
+          style={{ color: "var(--color-text)", fontWeight: 500, flex: 1, cursor: "pointer" }}
+          onClick={() => onRerun?.(block.command)}
+          title="Click to re-run"
         >
           {block.command || "..."}
         </span>
-
-        {/* Action buttons (visible on hover) */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {hasOutput && (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleCopy(); }}
-              title="Copy output"
-              style={{ width: 24, height: 24, borderRadius: "var(--radius-sm)", color: "var(--color-text-muted)" }}
-              className="flex items-center justify-center hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-            >
-              <Copy size={12} />
-            </button>
-          )}
-          {block.command && (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleRerun(); }}
-              title="Re-run command"
-              style={{ width: 24, height: 24, borderRadius: "var(--radius-sm)", color: "var(--color-text-muted)" }}
-              className="flex items-center justify-center hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-            >
-              <RotateCw size={12} />
-            </button>
-          )}
-        </div>
-
-        {/* Exit code badge */}
         {isError && (
-          <span
-            style={{
-              fontSize: 10,
-              color: "var(--color-error)",
-              background: "rgba(248, 81, 73, 0.1)",
-              padding: "1px 6px",
-              borderRadius: "var(--radius-xs)",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {block.exit_code}
+          <span style={{ color: "var(--color-error)", fontSize: 11 }}>
+            exit {block.exit_code}
           </span>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+          title="Copy output"
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--color-text-muted)",
+            cursor: "pointer",
+            padding: 2,
+          }}
+        >
+          <Copy size={12} />
+        </button>
       </div>
 
-      {/* Block output */}
-      {hasOutput && !collapsed && (
+      {/* Output */}
+      {trimmedRows.length > 0 && (
         <div
-          style={{
-            borderTop: "1px solid var(--color-border-muted)",
-            padding: "var(--sp-2) var(--sp-3)",
-            maxHeight: 400,
-            overflow: "auto",
-            fontFamily: "var(--font-mono)",
-            fontSize: 13,
-            lineHeight: "1.3",
-          }}
           className="whitespace-pre"
+          style={{
+            color: isError ? "var(--color-error)" : "var(--term-fg)",
+          }}
         >
-          {outputRows.map((row, i) => (
+          {trimmedRows.map((row, i) => (
             <TerminalRow key={i} cells={row} />
           ))}
         </div>
@@ -248,7 +355,6 @@ function CommandBlock({ block, rows, isRunning, onRerun }: CommandBlockProps) {
 
 /** Render a single row of terminal cells */
 const TerminalRow = React.memo(function TerminalRow({ cells }: { cells: CellData[] }) {
-  // Group consecutive cells with same style into spans
   const spans = useMemo(() => {
     const result: { text: string; style: React.CSSProperties }[] = [];
     let currentCells: CellData[] = [];
@@ -272,10 +378,7 @@ const TerminalRow = React.memo(function TerminalRow({ cells }: { cells: CellData
     return result;
   }, [cells]);
 
-  const line = spans
-    .map((s) => s.text)
-    .join("")
-    .trimEnd();
+  const line = spans.map((s) => s.text).join("").trimEnd();
   if (!line) return <div style={{ height: "1.3em" }} />;
 
   return (
@@ -318,11 +421,4 @@ function cellStyle(cell: CellData): React.CSSProperties {
   if (cell.strikethrough) deco.push("line-through");
   if (deco.length) style.textDecoration = deco.join(" ");
   return style;
-}
-
-function cwdShort(cwd: string): string {
-  if (!cwd) return "~";
-  const parts = cwd.replace(/\\/g, "/").split("/").filter(Boolean);
-  if (parts.length <= 2) return cwd.replace(/\\/g, "/");
-  return "~/" + parts.slice(-2).join("/");
 }

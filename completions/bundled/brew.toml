@@ -1,3 +1,5 @@
+wit_completion_version = "1.0"
+
 [command]
 name = "brew"
 description = "Homebrew package manager for macOS/Linux"

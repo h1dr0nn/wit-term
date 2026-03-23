@@ -63,15 +63,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     })),
 
   createNewSession: async (cwd?: string) => {
-    const id = await invoke<string>("create_session", { cwd: cwd ?? null });
+    const result = await invoke<{ id: string; cwd: string }>("create_session", { cwd: cwd ?? null });
     get().addSession({
-      id,
+      id: result.id,
       title: `Terminal ${get().sessions.length + 1}`,
-      cwd: cwd ?? "",
+      cwd: result.cwd,
       createdAt: Date.now(),
     });
-    get().setActiveSession(id);
-    return id;
+    get().setActiveSession(result.id);
+    return result.id;
   },
 
   closeSession: async (id) => {

@@ -8,8 +8,9 @@ import { SearchOverlay, type SearchOptions } from "./SearchOverlay";
 import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
 import { useCompletionStore, type CompletionItem } from "../../stores/completionStore";
 import { useSessionStore } from "../../stores/sessionStore";
+import { useContextStore } from "../../stores/contextStore";
 import { useInputBuffer } from "../../hooks/useInputBuffer";
-import { encodeKey } from "../../utils/keyEncoder";
+// encodeKey no longer used — InputBar handles all text input
 
 interface GridUpdatePayload {
   session_id: string;
@@ -55,18 +56,30 @@ export function TerminalView() {
   const completionSelectPrevious = useCompletionStore((s) => s.selectPrevious);
   const completionGetSelected = useCompletionStore((s) => s.getSelected);
 
+  const selectedBlockIndex = useTerminalStore((s) => s.selectedBlockIndex);
+  const selectBlock = useTerminalStore((s) => s.selectBlock);
+  const moveBlockSelection = useTerminalStore((s) => s.moveBlockSelection);
+  const addFrontendBlock = useTerminalStore((s) => s.addFrontendBlock);
+  const frontendBlocks = useTerminalStore((s) => s.frontendBlocks);
+
   const { append, reset, getBuffer, getCursor, insertCompletion } =
     useInputBuffer();
 
   const snapshot = sessionId ? grids.get(sessionId) : undefined;
   const exited = sessionId ? exitedSessions.has(sessionId) : false;
 
-  // Focus container when active session changes
+  // Focus container and sync CWD when active session changes
   useEffect(() => {
     if (sessionId) {
       containerRef.current?.focus();
       completionHide();
       reset();
+      // Sync initial CWD from session store
+      const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId);
+      if (session?.cwd) {
+        cwdRef.current = session.cwd;
+        setCurrentCwd(session.cwd);
+      }
     }
   }, [sessionId, completionHide, reset]);
 
@@ -206,10 +219,20 @@ export function TerminalView() {
     }
   }, [getBuffer, getCursor, insertCompletion, sessionId, completionShow]);
 
+  const focusInputBar = useCallback(() => {
+    const textarea = containerRef.current?.querySelector<HTMLTextAreaElement>(
+      "textarea[placeholder]",
+    );
+    textarea?.focus();
+  }, []);
+
   // Handle keyboard input
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!sessionId || exited) return;
+
+      // Skip during IME composition (Vietnamese, Chinese, etc.)
+      if (e.nativeEvent.isComposing || e.key === "Process") return;
 
       // Global shortcuts (work regardless of completion state)
       const sessions = useSessionStore.getState().sessions;
@@ -247,6 +270,39 @@ export function TerminalView() {
           useSessionStore.getState().switchToIndex(idx);
           return;
         }
+      }
+
+      // Block navigation: Ctrl+Up/Down to enter/navigate, Escape to exit
+      const blockCount = snapshot?.blocks.length ?? 0;
+      if (e.ctrlKey && !e.shiftKey && e.key === "ArrowUp") {
+        e.preventDefault();
+        moveBlockSelection("up", blockCount);
+        return;
+      }
+      if (e.ctrlKey && !e.shiftKey && e.key === "ArrowDown") {
+        e.preventDefault();
+        moveBlockSelection("down", blockCount);
+        return;
+      }
+      // Arrow keys in block nav mode (when no completion popup)
+      if (selectedBlockIndex !== null && !completionVisible) {
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          moveBlockSelection("up", blockCount);
+          return;
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          moveBlockSelection("down", blockCount);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          selectBlock(null);
+          return;
+        }
+        // Any other key exits block nav and passes through
+        selectBlock(null);
       }
 
       // Completion popup keyboard handling
@@ -300,7 +356,33 @@ export function TerminalView() {
         return;
       }
 
-      // Clipboard: Ctrl+Shift+V = paste
+      // Ctrl+C: copy if selection exists, otherwise send SIGINT
+      if (e.ctrlKey && !e.shiftKey && (e.key === "c" || e.key === "C")) {
+        const selection = window.getSelection()?.toString();
+        if (selection) {
+          e.preventDefault();
+          navigator.clipboard.writeText(selection).catch(() => {});
+          return;
+        }
+        // No selection - fall through to send \x03 (SIGINT) to PTY
+      }
+
+      // Ctrl+V: paste into terminal
+      if (e.ctrlKey && !e.shiftKey && (e.key === "v" || e.key === "V")) {
+        e.preventDefault();
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            if (text) {
+              append(text);
+              invoke("send_input", { sessionId, data: text }).catch(() => {});
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+
+      // Ctrl+Shift+V = paste (backward compat)
       if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
         e.preventDefault();
         navigator.clipboard
@@ -315,7 +397,7 @@ export function TerminalView() {
         return;
       }
 
-      // Clipboard: Ctrl+Shift+C = copy selection
+      // Ctrl+Shift+C = copy selection (backward compat)
       if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
         e.preventDefault();
         const selection = window.getSelection()?.toString();
@@ -325,19 +407,14 @@ export function TerminalView() {
         return;
       }
 
-      e.preventDefault();
-
-      const data = encodeKey(e);
-      if (data) {
-        append(data);
-        invoke("send_input", { sessionId, data }).catch((err) => {
-          console.error("Failed to send input:", err);
-        });
-      }
+      // For non-shortcut keys, focus the InputBar textarea.
+      // The InputBar is the only input method in chat/blocks mode.
+      focusInputBar();
     },
     [
       sessionId,
       exited,
+      snapshot,
       completionVisible,
       completionSelectNext,
       completionSelectPrevious,
@@ -346,20 +423,34 @@ export function TerminalView() {
       requestCompletions,
       insertCompletion,
       append,
+      selectedBlockIndex,
+      selectBlock,
+      moveBlockSelection,
+      focusInputBar,
     ],
   );
 
   const handleClick = useCallback(() => {
-    containerRef.current?.focus();
+    // Focus the InputBar textarea (the only input method)
+    const textarea = containerRef.current?.querySelector<HTMLTextAreaElement>(
+      "textarea[placeholder]",
+    );
+    textarea?.focus();
   }, []);
 
   const handleInputSubmit = useCallback(
     (input: string) => {
       if (!sessionId) return;
+      // Create a frontend block for this command
+      const rowCount = snapshot?.rows.length ?? 0;
+      const ctx = useContextStore.getState().context;
+      const gitBranch = ctx?.providers?.git?.data?.branch as string | undefined;
+      addFrontendBlock(sessionId, input, cwdRef.current, rowCount, gitBranch);
+      // Send to PTY
       invoke("send_input", { sessionId, data: input + "\r" }).catch(() => {});
       append(input + "\r");
     },
-    [sessionId, append],
+    [sessionId, append, snapshot, addFrontendBlock],
   );
 
   const handleInputTab = useCallback(
@@ -394,13 +485,20 @@ export function TerminalView() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 relative flex flex-col bg-[var(--color-bg)] focus:outline-none overflow-hidden"
+      className="flex-1 relative flex flex-col focus:outline-none overflow-hidden"
+      style={{ background: "var(--term-bg)" }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
     >
       {snapshot ? (
-        <BlocksView snapshot={snapshot} onRerun={handleRerun} />
+        <BlocksView
+          snapshot={snapshot}
+          onRerun={handleRerun}
+          selectedBlockIndex={selectedBlockIndex}
+          onSelectBlock={selectBlock}
+          frontendBlocks={sessionId ? frontendBlocks.get(sessionId) : undefined}
+        />
       ) : (
         <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-sm">
           Loading...

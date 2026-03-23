@@ -6,7 +6,8 @@ interface TerminalGridProps {
   snapshot: GridSnapshot;
 }
 
-const ROW_HEIGHT = 16.8; // 14px * 1.2 line-height
+const ROW_HEIGHT = 18; // Slightly more spacious for readability
+const FONT_SIZE = 14;
 
 export function TerminalGrid({ snapshot }: TerminalGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,8 +80,16 @@ export function TerminalGrid({ snapshot }: TerminalGridProps) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-auto font-mono text-sm leading-[1.2] whitespace-pre"
+      className="flex-1 overflow-auto whitespace-pre"
       onScroll={handleScroll}
+      style={{
+        background: "var(--term-bg)",
+        color: "var(--term-fg)",
+        fontFamily: "var(--font-mono)",
+        fontSize: FONT_SIZE,
+        lineHeight: `${ROW_HEIGHT}px`,
+        padding: "var(--sp-2) var(--sp-3)",
+      }}
     >
       <div style={{ height: totalHeight, position: "relative" }}>
         {visibleRows}
@@ -151,7 +160,11 @@ const TerminalRow = React.memo(function TerminalRow({
             return (
               <React.Fragment key={idx}>
                 {before && <span style={style}>{before}</span>}
-                <span style={cursorStyleFn(cursorShape)} data-cursor="true">
+                <span
+                  style={cursorStyleFn(cursorShape)}
+                  className="terminal-cursor"
+                  data-cursor="true"
+                >
                   {cursorChar}
                 </span>
                 {after && <span style={style}>{after}</span>}

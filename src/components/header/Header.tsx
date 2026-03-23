@@ -24,8 +24,9 @@ export function Header() {
   return (
     <header
       data-tauri-drag-region
-      className="flex items-center shrink-0 select-none h-10 z-[100] border-b border-[var(--color-border-muted)] bg-[var(--color-bg)]/80 backdrop-blur-2xl"
+      className="flex items-center shrink-0 select-none h-10 z-[100] border-b border-[var(--color-border-muted)] bg-[var(--color-bg)]"
     >
+
       {/* macOS traffic lights spacer */}
       <div className="macos-only" style={{ width: 78 }} />
 

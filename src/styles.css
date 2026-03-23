@@ -97,10 +97,9 @@ html, body, #root {
 
 /* ─── Window Root ─── */
 .window-root {
-  background: color-mix(in srgb, var(--color-bg), transparent 12%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--color-bg);
   border: 1px solid var(--color-border-muted);
+
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
@@ -158,6 +157,22 @@ html, body, #root {
   background: color-mix(in srgb, var(--color-surface), transparent 20%) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
+}
+
+/* ─── Terminal Cursor Blink ─── */
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.terminal-cursor {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+/* ─── Terminal Selection ─── */
+::selection {
+  background: var(--term-selection-bg);
+  color: var(--term-selection-fg);
 }
 
 

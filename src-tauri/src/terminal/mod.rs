@@ -94,6 +94,9 @@ pub struct GridSnapshot {
     pub cursor_visible: bool,
     pub cursor_shape: CursorShape,
     pub blocks: Vec<BlockInfo>,
+    /// Number of scrollback rows at the beginning of `rows`.
+    /// Total rows = scrollback_len + visible rows.
+    pub scrollback_len: usize,
 }
 
 /// A command block — one prompt + command + output cycle.

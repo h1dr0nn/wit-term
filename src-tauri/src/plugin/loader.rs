@@ -6,6 +6,9 @@ use super::manifest::PluginManifest;
 use super::TomlPlugin;
 use crate::completion::CompletionItem;
 
+/// Current Wit version for compatibility checking.
+const WIT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Discover plugins in a directory.
 pub fn discover_plugins(dir: &Path) -> Vec<PluginManifest> {
     let mut manifests = Vec::new();
@@ -17,7 +20,20 @@ pub fn discover_plugins(dir: &Path) -> Vec<PluginManifest> {
                 let manifest_path = path.join("plugin.toml");
                 if manifest_path.exists() {
                     match PluginManifest::load(&path) {
-                        Ok(manifest) => manifests.push(manifest),
+                        Ok(manifest) => {
+                            // Check version compatibility
+                            if manifest.is_compatible(WIT_VERSION) {
+                                manifests.push(manifest);
+                            } else {
+                                log::warn!(
+                                    "Plugin {} v{} requires wit {}, current is {}",
+                                    manifest.name,
+                                    manifest.version,
+                                    manifest.wit_version.as_deref().unwrap_or("?"),
+                                    WIT_VERSION,
+                                );
+                            }
+                        }
                         Err(e) => {
                             log::warn!("Failed to load plugin from {}: {e}", path.display());
                         }
@@ -34,7 +50,14 @@ pub fn discover_plugins(dir: &Path) -> Vec<PluginManifest> {
 pub fn load_toml_plugin(manifest: &PluginManifest) -> Option<TomlPlugin> {
     let mut completion_items: Vec<(String, Vec<CompletionItem>)> = Vec::new();
 
-    for completion_file in &manifest.completions {
+    // Use provides.completions or legacy completions field
+    let completion_files = if !manifest.provides.completions.is_empty() {
+        &manifest.provides.completions
+    } else {
+        &manifest.completions
+    };
+
+    for completion_file in completion_files {
         let path = manifest.path.join(completion_file);
         if path.exists() {
             if let Ok(content) = std::fs::read_to_string(&path) {
@@ -62,6 +85,17 @@ pub fn load_toml_plugin(manifest: &PluginManifest) -> Option<TomlPlugin> {
         version: manifest.version.clone(),
         completion_items,
     })
+}
+
+/// Discover theme files provided by a plugin.
+pub fn load_plugin_themes(manifest: &PluginManifest) -> Vec<std::path::PathBuf> {
+    manifest
+        .provides
+        .themes
+        .iter()
+        .map(|t| manifest.path.join(t))
+        .filter(|p| p.exists())
+        .collect()
 }
 
 #[derive(serde::Deserialize)]
