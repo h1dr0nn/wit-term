@@ -35,7 +35,34 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": [
+      "../completions/*",
+      "../themes/*",
+      "../shell-integration/*"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Context-aware terminal emulator",
+    "longDescription": "Wit is a context-aware terminal emulator that detects project environments and provides intelligent completions without AI, cloud, or telemetry.",
+    "copyright": "Copyright (c) 2025 Wit Terminal Contributors",
+    "license": "MPL-2.0",
+    "licenseFile": "../LICENSE.md",
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   },
   "plugins": {}
 }
