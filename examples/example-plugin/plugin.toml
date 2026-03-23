@@ -1,0 +1,8 @@
+name = "example-terraform"
+version = "0.1.0"
+description = "Example plugin providing Terraform completions"
+author = "Wit Terminal"
+license = "MPL-2.0"
+plugin_type = "completion"
+
+completions = ["terraform.toml"]

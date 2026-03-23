@@ -1,0 +1,51 @@
+command = "terraform"
+
+[[completions]]
+text = "init"
+display = "init"
+description = "Initialize a Terraform working directory"
+
+[[completions]]
+text = "plan"
+display = "plan"
+description = "Generate and show an execution plan"
+
+[[completions]]
+text = "apply"
+display = "apply"
+description = "Build or change infrastructure"
+
+[[completions]]
+text = "destroy"
+display = "destroy"
+description = "Destroy Terraform-managed infrastructure"
+
+[[completions]]
+text = "validate"
+display = "validate"
+description = "Validate the configuration files"
+
+[[completions]]
+text = "fmt"
+display = "fmt"
+description = "Rewrite config files to canonical format"
+
+[[completions]]
+text = "output"
+display = "output"
+description = "Show output values from state"
+
+[[completions]]
+text = "state"
+display = "state"
+description = "Advanced state management"
+
+[[completions]]
+text = "workspace"
+display = "workspace"
+description = "Workspace management"
+
+[[completions]]
+text = "import"
+display = "import"
+description = "Import existing infrastructure"

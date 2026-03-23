@@ -3,6 +3,7 @@ pub mod completion;
 pub mod config;
 pub mod context;
 pub mod parser;
+pub mod plugin;
 pub mod pty;
 pub mod session;
 pub mod terminal;

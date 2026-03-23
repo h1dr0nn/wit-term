@@ -5,7 +5,7 @@
 
 mod context_source;
 mod fuzzy;
-mod parser;
+pub mod parser;
 mod path_source;
 mod static_source;
 
