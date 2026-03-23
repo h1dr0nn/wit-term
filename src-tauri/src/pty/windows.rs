@@ -31,7 +31,9 @@ pub struct ConPty {
 
 // SAFETY: ConPTY handles can be safely sent across threads.
 // The Windows ConPTY API is designed for multi-threaded use.
+// Read and write handles are independent and can be used concurrently.
 unsafe impl Send for ConPty {}
+unsafe impl Sync for ConPty {}
 
 impl ConPty {
     pub fn spawn(
@@ -169,7 +171,7 @@ impl ConPty {
 }
 
 impl PtyBackend for ConPty {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut bytes_read: u32 = 0;
         unsafe {
             pty_read_file(self.pty_output, buf, &mut bytes_read)?;
@@ -177,7 +179,7 @@ impl PtyBackend for ConPty {
         Ok(bytes_read as usize)
     }
 
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+    fn write(&self, data: &[u8]) -> io::Result<usize> {
         let mut bytes_written: u32 = 0;
         unsafe {
             pty_write_file(self.pty_input, data, &mut bytes_written)?;
@@ -205,7 +207,7 @@ impl PtyBackend for ConPty {
         unsafe { WaitForSingleObject(self.process_info.hProcess, 0) != WAIT_OBJECT_0 }
     }
 
-    fn wait(&mut self) -> io::Result<ExitStatus> {
+    fn wait(&self) -> io::Result<ExitStatus> {
         unsafe {
             WaitForSingleObject(self.process_info.hProcess, u32::MAX);
             let mut exit_code: u32 = 0;

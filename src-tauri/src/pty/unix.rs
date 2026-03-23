@@ -119,8 +119,10 @@ impl UnixPty {
     }
 }
 
+unsafe impl Sync for UnixPty {}
+
 impl PtyBackend for UnixPty {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         match read(self.master_fd, buf) {
             Ok(n) => Ok(n),
             Err(nix::errno::Errno::EIO) => Ok(0), // EOF - child exited
@@ -129,7 +131,7 @@ impl PtyBackend for UnixPty {
         }
     }
 
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+    fn write(&self, data: &[u8]) -> io::Result<usize> {
         write(self.master_fd, data)
             .map_err(|e| io::Error::other(format!("write: {e}")))
     }
@@ -160,7 +162,7 @@ impl PtyBackend for UnixPty {
         }
     }
 
-    fn wait(&mut self) -> io::Result<ExitStatus> {
+    fn wait(&self) -> io::Result<ExitStatus> {
         loop {
             match waitpid(self.child_pid, None) {
                 Ok(WaitStatus::Exited(_, code)) => {

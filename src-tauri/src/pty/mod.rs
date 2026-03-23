@@ -9,13 +9,16 @@ mod unix;
 mod windows;
 
 /// Cross-platform PTY backend trait.
-pub trait PtyBackend: Send {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize>;
-    fn write(&mut self, data: &[u8]) -> io::Result<usize>;
+///
+/// Read and write operate on separate underlying handles and are safe
+/// to call concurrently (read from one thread, write from another).
+pub trait PtyBackend: Send + Sync {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize>;
+    fn write(&self, data: &[u8]) -> io::Result<usize>;
     fn resize(&self, cols: u16, rows: u16) -> io::Result<()>;
     fn child_pid(&self) -> u32;
     fn is_alive(&self) -> bool;
-    fn wait(&mut self) -> io::Result<ExitStatus>;
+    fn wait(&self) -> io::Result<ExitStatus>;
 }
 
 /// Configuration for spawning a PTY session.

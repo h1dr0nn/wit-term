@@ -10,7 +10,7 @@ import { useSessionStore } from "./stores/sessionStore";
 import { useTheme } from "./hooks/useTheme";
 
 function App() {
-  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const [contextSidebarVisible, setContextSidebarVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [paletteVisible, setPaletteVisible] = useState(false);

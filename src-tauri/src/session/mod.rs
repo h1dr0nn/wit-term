@@ -63,7 +63,7 @@ struct Session {
     id: SessionId,
     title: String,
     cwd: std::path::PathBuf,
-    pty: Arc<Mutex<Box<dyn PtyBackend>>>,
+    pty: Arc<Box<dyn PtyBackend>>,
     emulator: Arc<Mutex<Emulator>>,
     _read_thread: thread::JoinHandle<()>,
     shutdown_tx: Sender<()>,
@@ -92,7 +92,7 @@ impl SessionManager {
         };
 
         let pty = pty::spawn_pty(&config).map_err(|e| format!("Failed to spawn PTY: {e}"))?;
-        let pty = Arc::new(Mutex::new(pty));
+        let pty = Arc::new(pty);
 
         let emulator = Arc::new(Mutex::new(Emulator::new(
             config.cols as usize,
@@ -117,15 +117,12 @@ impl SessionManager {
                         break;
                     }
 
-                    let n = {
-                        let mut pty = pty_reader.lock().unwrap();
-                        match pty.read(&mut buf) {
-                            Ok(0) => break,
-                            Ok(n) => n,
-                            Err(e) => {
-                                log::debug!("PTY read error for {session_id}: {e}");
-                                break;
-                            }
+                    let n = match pty_reader.read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(n) => n,
+                        Err(e) => {
+                            log::debug!("PTY read error for {session_id}: {e}");
+                            break;
                         }
                     };
 
@@ -173,10 +170,7 @@ impl SessionManager {
                     }
                 }
 
-                let exit_code = {
-                    let pty = pty_reader.lock().unwrap();
-                    if pty.is_alive() { -1 } else { 0 }
-                };
+                let exit_code = if pty_reader.is_alive() { -1 } else { 0 };
                 let _ = event_tx.send(SessionEvent::Exited {
                     session_id,
                     exit_code,
@@ -215,8 +209,9 @@ impl SessionManager {
             .get(id)
             .ok_or_else(|| format!("Session {id} not found"))?;
 
-        let mut pty = session.pty.lock().unwrap();
-        pty.write(data)
+        session
+            .pty
+            .write(data)
             .map_err(|e| format!("Failed to write to PTY: {e}"))?;
         Ok(())
     }
@@ -227,12 +222,11 @@ impl SessionManager {
             .get(id)
             .ok_or_else(|| format!("Session {id} not found"))?;
 
-        // Resize PTY
-        {
-            let pty = session.pty.lock().unwrap();
-            pty.resize(cols, rows)
-                .map_err(|e| format!("Failed to resize PTY: {e}"))?;
-        }
+        // Resize PTY (no mutex needed — resize is thread-safe)
+        session
+            .pty
+            .resize(cols, rows)
+            .map_err(|e| format!("Failed to resize PTY: {e}"))?;
 
         // Resize emulator grid
         {
