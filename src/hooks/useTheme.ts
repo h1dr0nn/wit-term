@@ -36,12 +36,14 @@ export interface Theme {
 function applyTheme(colors: ThemeColors) {
   const root = document.documentElement;
 
+  // Terminal basic colors
   root.style.setProperty("--term-fg", colors.foreground);
   root.style.setProperty("--term-bg", colors.background);
   root.style.setProperty("--term-cursor", colors.cursor);
   root.style.setProperty("--term-selection-bg", colors.selection_bg);
   root.style.setProperty("--term-selection-fg", colors.selection_fg);
 
+  // Terminal ANSI colors
   root.style.setProperty("--term-black", colors.black);
   root.style.setProperty("--term-red", colors.red);
   root.style.setProperty("--term-green", colors.green);
@@ -60,16 +62,52 @@ function applyTheme(colors: ThemeColors) {
   root.style.setProperty("--term-bright-cyan", colors.bright_cyan);
   root.style.setProperty("--term-bright-white", colors.bright_white);
 
-  // Derived UI colors
-  root.style.setProperty("--ui-bg", colors.background);
-  root.style.setProperty("--ui-bg-secondary", mixColor(colors.background, colors.foreground, 0.05));
-  root.style.setProperty("--ui-bg-tertiary", mixColor(colors.background, colors.foreground, 0.1));
-  root.style.setProperty("--ui-border", mixColor(colors.background, colors.foreground, 0.15));
-  root.style.setProperty("--ui-fg", colors.foreground);
-  root.style.setProperty("--ui-fg-muted", mixColor(colors.foreground, colors.background, 0.4));
-  root.style.setProperty("--ui-fg-dim", mixColor(colors.foreground, colors.background, 0.6));
-  root.style.setProperty("--ui-accent", colors.blue);
+  // --- Dynamic UI Synchronization ---
+  const isLight = getLuminance(colors.background) > 0.5;
+  const mixFactor = isLight ? 0.08 : 0.05;
+
+  root.style.setProperty("--color-bg", colors.background);
+  root.style.setProperty("--color-text", colors.foreground);
+  
+  // Mix colors for hierarchy
+  const secondaryFg = mixColor(colors.foreground, colors.background, 0.3);
+  const mutedFg = mixColor(colors.foreground, colors.background, 0.5);
+  
+  root.style.setProperty("--color-text-secondary", secondaryFg);
+  root.style.setProperty("--color-text-muted", mutedFg);
+
+  const surface = mixColor(colors.background, colors.foreground, mixFactor);
+  const surfaceHover = mixColor(colors.background, colors.foreground, mixFactor * 2);
+  const surfaceActive = mixColor(colors.background, colors.foreground, mixFactor * 3);
+  
+  root.style.setProperty("--color-surface", surface);
+  root.style.setProperty("--color-surface-hover", surfaceHover);
+  root.style.setProperty("--color-surface-active", surfaceActive);
+
+  root.style.setProperty("--color-border", mixColor(colors.background, colors.foreground, 0.15));
+  root.style.setProperty("--color-border-muted", mixColor(colors.background, colors.foreground, 0.08));
+
+  // Accent & Functional colors
+  root.style.setProperty("--color-primary", colors.blue);
+  root.style.setProperty("--color-primary-muted", mixColor(colors.blue, colors.background, 0.8));
+  root.style.setProperty("--color-success", colors.green);
+  root.style.setProperty("--color-warning", colors.yellow);
+  root.style.setProperty("--color-error", colors.red);
+  root.style.setProperty("--color-info", colors.cyan);
 }
+
+function getLuminance(hex: string): number {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16) / 255;
+  const g = parseInt(h.substring(2, 4), 16) / 255;
+  const b = parseInt(h.substring(4, 6), 16) / 255;
+  
+  const a = [r, g, b].map(v => {
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+}
+
 
 function mixColor(c1: string, c2: string, ratio: number): string {
   const parse = (hex: string) => {

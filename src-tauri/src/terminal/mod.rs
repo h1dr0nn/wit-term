@@ -93,6 +93,44 @@ pub struct GridSnapshot {
     pub cursor_col: usize,
     pub cursor_visible: bool,
     pub cursor_shape: CursorShape,
+    pub blocks: Vec<BlockInfo>,
+}
+
+/// A command block — one prompt + command + output cycle.
+#[derive(Debug, Clone, Serialize)]
+pub struct BlockInfo {
+    pub id: u32,
+    pub prompt_row: usize,
+    pub output_start_row: Option<usize>,
+    pub output_end_row: Option<usize>,
+    pub exit_code: Option<i32>,
+    pub cwd: String,
+    pub command: String,
+}
+
+/// Internal block tracking state.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BlockState {
+    /// Waiting for next prompt.
+    Idle,
+    /// Prompt is being displayed (OSC 133;A received).
+    PromptShown,
+    /// User is typing a command (OSC 133;B received).
+    CommandInput,
+    /// Command is executing, output streaming (OSC 133;C received).
+    Executing,
+}
+
+/// Internal command block with mutable state.
+#[derive(Debug, Clone)]
+pub struct CommandBlock {
+    pub id: u32,
+    pub prompt_row: usize,
+    pub command_row: usize,
+    pub output_start_row: Option<usize>,
+    pub output_end_row: Option<usize>,
+    pub exit_code: Option<i32>,
+    pub cwd: String,
 }
 
 /// Serializable cell data for IPC.

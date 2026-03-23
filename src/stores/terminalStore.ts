@@ -18,12 +18,23 @@ export type ColorData =
   | { type: "Indexed"; index: number }
   | { type: "Rgb"; r: number; g: number; b: number };
 
+export interface BlockInfo {
+  id: number;
+  prompt_row: number;
+  output_start_row: number | null;
+  output_end_row: number | null;
+  exit_code: number | null;
+  cwd: string;
+  command: string;
+}
+
 export interface GridSnapshot {
   rows: CellData[][];
   cursor_row: number;
   cursor_col: number;
   cursor_visible: boolean;
   cursor_shape: "Block" | "Underline" | "Bar";
+  blocks: BlockInfo[];
 }
 
 interface TerminalState {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { TerminalGrid } from "./TerminalGrid";
+import { BlocksView } from "./BlocksView";
+import { InputBar } from "./InputBar";
 import { CompletionPopup } from "./CompletionPopup";
 import { SearchOverlay, type SearchOptions } from "./SearchOverlay";
 import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
@@ -42,6 +43,7 @@ export function TerminalView() {
   const [searchMatches, setSearchMatches] = useState(0);
   const [searchCurrent, setSearchCurrent] = useState(0);
   const cwdRef = useRef<string>("");
+  const [currentCwd, setCurrentCwd] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const updateGrid = useTerminalStore((s) => s.updateGrid);
   const grids = useTerminalStore((s) => s.grids);
@@ -86,6 +88,7 @@ export function TerminalView() {
       // Update local ref if this is the active session
       if (event.payload.session_id === sessionId) {
         cwdRef.current = event.payload.cwd;
+        setCurrentCwd(event.payload.cwd);
         reset();
       }
     });
@@ -350,6 +353,36 @@ export function TerminalView() {
     containerRef.current?.focus();
   }, []);
 
+  const handleInputSubmit = useCallback(
+    (input: string) => {
+      if (!sessionId) return;
+      invoke("send_input", { sessionId, data: input + "\r" }).catch(() => {});
+      append(input + "\r");
+    },
+    [sessionId, append],
+  );
+
+  const handleInputTab = useCallback(
+    (input: string, cursorPos: number) => {
+      const cwd = cwdRef.current;
+      if (!input.trim()) return;
+      invoke<CompletionItem[]>("request_completions", { input, cursorPos, cwd })
+        .then((items) => {
+          if (items.length > 0) completionShow(items);
+        })
+        .catch(() => {});
+    },
+    [completionShow],
+  );
+
+  const handleRerun = useCallback(
+    (command: string) => {
+      if (!sessionId) return;
+      invoke("send_input", { sessionId, data: command + "\r" }).catch(() => {});
+    },
+    [sessionId],
+  );
+
   if (!sessionId) {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--ui-fg-dim)] text-sm">
@@ -361,18 +394,24 @@ export function TerminalView() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 relative flex flex-col bg-[var(--color-bg)] focus:outline-none overflow-hidden p-1"
+      className="flex-1 relative flex flex-col bg-[var(--color-bg)] focus:outline-none overflow-hidden"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
     >
       {snapshot ? (
-        <TerminalGrid snapshot={snapshot} />
+        <BlocksView snapshot={snapshot} onRerun={handleRerun} />
       ) : (
-        <div className="flex-1 flex items-center justify-center text-[var(--ui-fg-muted)] text-sm">
+        <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-sm">
           Loading...
         </div>
       )}
+      <InputBar
+        cwd={currentCwd}
+        onSubmit={handleInputSubmit}
+        onTab={handleInputTab}
+        visible={!!sessionId && !exited}
+      />
       <CompletionPopup />
       <SearchOverlay
         visible={searchVisible}
@@ -384,7 +423,16 @@ export function TerminalView() {
         onPrevious={handleSearchPrevious}
       />
       {exited && (
-        <div className="text-[var(--ui-fg-muted)] text-sm p-2">[Process exited]</div>
+        <div
+          style={{
+            padding: "var(--sp-3)",
+            color: "var(--color-text-muted)",
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          [Process exited]
+        </div>
       )}
     </div>
   );

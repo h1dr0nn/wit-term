@@ -1,4 +1,6 @@
 import { useCallback, useRef, useEffect } from "react";
+import { Folder } from "lucide-react";
+
 
 interface InputBarProps {
   cwd: string;
@@ -65,9 +67,7 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
         className="flex items-center gap-1.5"
       >
         {/* Folder icon */}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-          <path d="M1.5 3.5C1.5 2.95 1.95 2.5 2.5 2.5H4.5L5.5 3.5H9.5C10.05 3.5 10.5 3.95 10.5 4.5V8.5C10.5 9.05 10.05 9.5 9.5 9.5H2.5C1.95 9.5 1.5 9.05 1.5 8.5V3.5Z" />
-        </svg>
+        <Folder size={12} strokeWidth={2} />
         <span className="truncate" title={cwd}>
           {cwdDisplay}
         </span>

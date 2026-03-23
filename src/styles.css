@@ -97,7 +97,7 @@ html, body, #root {
 
 /* ─── Window Root ─── */
 .window-root {
-  background: rgba(13, 17, 23, 0.88);
+  background: color-mix(in srgb, var(--color-bg), transparent 12%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--color-border-muted);
@@ -118,10 +118,47 @@ html, body, #root {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
-/* ─── Platform: macOS traffic lights spacer ─── */
-.macos-only { display: none; }
-.non-macos-only { display: flex; }
+/* ─── Modals & Overlays ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fade-in 200ms ease-out;
+}
 
-/* macOS detection via Tauri-injected platform class */
-html[data-platform="macos"] .macos-only { display: block; }
-html[data-platform="macos"] .non-macos-only { display: none !important; }
+.modal-content {
+  animation: modal-in 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  transform-origin: center center;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.glass {
+  background: color-mix(in srgb, var(--color-surface), transparent 20%) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+
+
+

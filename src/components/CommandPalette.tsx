@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
+import { Terminal, Layout, Settings, Search } from "lucide-react";
 import { useSessionStore } from "../stores/sessionStore";
+
 
 interface Command {
   id: string;
@@ -152,22 +154,28 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/30"
+      className="modal-overlay"
       onClick={onClose}
     >
       <div
-        className="w-[480px] bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-lg shadow-2xl overflow-hidden"
+        className="modal-content w-[520px] glass border border-[var(--color-border)] rounded-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <input
-          ref={setInputRef}
-          type="text"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
-          className="w-full bg-transparent border-b border-[var(--ui-border)] px-4 py-3 text-sm text-[var(--ui-fg)] outline-none placeholder:text-[var(--ui-fg-dim)]"
-          placeholder="Type a command..."
-        />
+        <div className="relative">
+          <Search 
+            size={16} 
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ui-fg-dim)]" 
+          />
+          <input
+            ref={setInputRef}
+            type="text"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
+            className="w-full bg-transparent border-b border-[var(--ui-border)] pl-11 pr-4 py-3 text-sm text-[var(--ui-fg)] outline-none placeholder:text-[var(--ui-fg-dim)]"
+            placeholder="Type a command..."
+          />
+        </div>
         <div className="max-h-72 overflow-y-auto py-1">
           {filtered.map((cmd, idx) => (
             <div
@@ -180,10 +188,17 @@ export function CommandPalette({
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-xs text-[var(--ui-fg-dim)] w-20">
+                <div className="w-8 flex justify-center">
+                  {cmd.category === "Session" && <Terminal size={14} className="text-[var(--ui-fg-dim)]" />}
+                  {cmd.category === "View" && <Layout size={14} className="text-[var(--ui-fg-dim)]" />}
+                  {cmd.category === "Preferences" && <Settings size={14} className="text-[var(--ui-fg-dim)]" />}
+                </div>
+                <span className="text-sm text-[var(--ui-fg)]">{cmd.label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider text-[var(--ui-fg-dim)] opacity-50">
                   {cmd.category}
                 </span>
-                <span className="text-sm text-[var(--ui-fg)]">{cmd.label}</span>
               </div>
               {cmd.shortcut && (
                 <span className="text-xs text-[var(--ui-fg-dim)] bg-[var(--ui-bg-secondary)] px-1.5 py-0.5 rounded">

@@ -3,7 +3,7 @@
 use crate::parser::{Action, Parser};
 
 use super::grid::{CellAttrs, Color, Grid, NamedColor};
-use super::{AttrFlags, CellData, Cursor, GridSnapshot, TerminalModes};
+use super::{AttrFlags, BlockInfo, BlockState, CellData, CommandBlock, Cursor, GridSnapshot, TerminalModes};
 
 /// The terminal emulator owns the grid, cursor, parser, and modes.
 pub struct Emulator {
@@ -20,6 +20,12 @@ pub struct Emulator {
     dirty: bool,
     /// Whether the CWD changed since last check.
     cwd_dirty: bool,
+    /// Command blocks (Warp-style).
+    pub blocks: Vec<CommandBlock>,
+    /// Current block tracking state.
+    pub block_state: BlockState,
+    /// Next block ID.
+    next_block_id: u32,
 }
 
 impl Emulator {
@@ -34,6 +40,9 @@ impl Emulator {
             cwd: None,
             dirty: true,
             cwd_dirty: false,
+            blocks: Vec::new(),
+            block_state: BlockState::Idle,
+            next_block_id: 1,
         }
     }
 
@@ -71,12 +80,31 @@ impl Emulator {
             })
             .collect();
 
+        let blocks: Vec<BlockInfo> = self
+            .blocks
+            .iter()
+            .map(|b| {
+                // Extract command text from grid rows between command_row and output_start_row
+                let command = self.extract_row_text(b.command_row);
+                BlockInfo {
+                    id: b.id,
+                    prompt_row: b.prompt_row,
+                    output_start_row: b.output_start_row,
+                    output_end_row: b.output_end_row,
+                    exit_code: b.exit_code,
+                    cwd: b.cwd.clone(),
+                    command,
+                }
+            })
+            .collect();
+
         GridSnapshot {
             rows,
             cursor_row: self.cursor.row,
             cursor_col: self.cursor.col,
             cursor_visible: self.cursor.visible && self.modes.cursor_visible,
             cursor_shape: self.cursor.shape,
+            blocks,
         }
     }
 
@@ -87,6 +115,20 @@ impl Emulator {
         self.cursor.col = self.cursor.col.min(cols - 1);
         self.cursor.row = self.cursor.row.min(rows - 1);
         self.dirty = true;
+    }
+
+    /// Extract text content from a grid row.
+    fn extract_row_text(&self, row: usize) -> String {
+        if row >= self.grid.rows {
+            return String::new();
+        }
+        self.grid
+            .row(row)
+            .iter()
+            .map(|c| c.content.as_str())
+            .collect::<String>()
+            .trim_end()
+            .to_string()
     }
 
     fn handle_action(&mut self, action: Action) {
@@ -585,9 +627,77 @@ impl Emulator {
                     }
                 }
             }
+            // OSC 133 - Shell integration / semantic prompt
+            "133" => {
+                if parts.len() > 1 {
+                    let sub = std::str::from_utf8(&parts[1]).unwrap_or("");
+                    self.handle_osc133(sub);
+                }
+            }
             _ => {
                 log::trace!("Unhandled OSC: cmd={cmd}");
             }
+        }
+    }
+
+    /// Handle OSC 133 semantic prompt sequences.
+    fn handle_osc133(&mut self, sub: &str) {
+        match sub.chars().next() {
+            // A = Prompt start
+            Some('A') => {
+                // Close previous block if it was executing
+                if let Some(last) = self.blocks.last_mut() {
+                    if last.output_end_row.is_none() {
+                        last.output_end_row = Some(self.cursor.row.saturating_sub(1));
+                    }
+                }
+
+                let cwd = self
+                    .cwd
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+
+                let block = CommandBlock {
+                    id: self.next_block_id,
+                    prompt_row: self.cursor.row,
+                    command_row: self.cursor.row, // will be updated on B
+                    output_start_row: None,
+                    output_end_row: None,
+                    exit_code: None,
+                    cwd,
+                };
+                self.next_block_id += 1;
+                self.blocks.push(block);
+                self.block_state = BlockState::PromptShown;
+            }
+            // B = Command start (user typing after prompt)
+            Some('B') => {
+                if let Some(last) = self.blocks.last_mut() {
+                    last.command_row = self.cursor.row;
+                }
+                self.block_state = BlockState::CommandInput;
+            }
+            // C = Command executed (output begins)
+            Some('C') => {
+                if let Some(last) = self.blocks.last_mut() {
+                    last.output_start_row = Some(self.cursor.row);
+                }
+                self.block_state = BlockState::Executing;
+            }
+            // D = Command finished (exit code follows)
+            Some('D') => {
+                let exit_code = sub
+                    .get(1..)
+                    .and_then(|s| s.trim_start_matches(';').parse::<i32>().ok());
+
+                if let Some(last) = self.blocks.last_mut() {
+                    last.output_end_row = Some(self.cursor.row);
+                    last.exit_code = exit_code;
+                }
+                self.block_state = BlockState::Idle;
+            }
+            _ => {}
         }
     }
 }

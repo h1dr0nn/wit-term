@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, Square, X } from "lucide-react";
 import { useSessionStore } from "../../stores/sessionStore";
+
 
 export function Header() {
   const appWindow = getCurrentWindow();
@@ -29,16 +31,9 @@ export function Header() {
   return (
     <header
       data-tauri-drag-region
-      style={{
-        height: "var(--header-height)",
-        background: "rgba(13, 17, 23, 0.88)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(48, 54, 61, 0.6)",
-        zIndex: 100,
-      }}
-      className="flex items-center shrink-0 select-none"
+      className="flex items-center shrink-0 select-none h-10 z-[100] border-b border-[var(--color-border-muted)] bg-[var(--color-bg)]/80 backdrop-blur-2xl"
     >
+
       {/* macOS traffic lights spacer */}
       <div className="macos-only" style={{ width: 78 }} />
 
@@ -72,7 +67,7 @@ export function Header() {
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
         >
-          <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor"><rect width="10" height="1" /></svg>
+          <Minus size={14} strokeWidth={2} />
         </button>
         <button
           onClick={handleMaximize}
@@ -81,7 +76,7 @@ export function Header() {
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1"><rect x="0.5" y="0.5" width="9" height="9" /></svg>
+          <Square size={12} strokeWidth={2} />
         </button>
         <button
           onClick={handleClose}
@@ -90,7 +85,7 @@ export function Header() {
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#C42B1C"; e.currentTarget.style.color = "white"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "var(--color-text-secondary)"; }}
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2"><line x1="1" y1="1" x2="9" y2="9" /><line x1="9" y1="1" x2="1" y2="9" /></svg>
+          <X size={14} strokeWidth={2} />
         </button>
       </div>
     </header>

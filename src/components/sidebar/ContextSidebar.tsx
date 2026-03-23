@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { RotateCw, ChevronDown } from "lucide-react";
 import { useSessionStore } from "../../stores/sessionStore";
+
 
 interface ContextInfo {
   provider: string;
@@ -33,62 +35,40 @@ export function ContextSidebar() {
 
   return (
     <aside
-      style={{
-        width: 280,
-        background: "var(--color-surface)",
-        borderLeft: "1px solid var(--color-border-muted)",
-      }}
-      className="flex flex-col select-none shrink-0 overflow-y-auto"
+      role="complementary"
+      className="flex flex-col select-none shrink-0 border-l border-[var(--color-border-muted)] bg-[var(--color-surface)]/60 backdrop-blur-xl"
+      style={{ width: 280 }}
     >
       {/* Header - 48px */}
       <div
-        style={{
-          height: 48,
-          padding: "0 var(--sp-3)",
-          borderBottom: "1px solid var(--color-border-muted)",
-        }}
-        className="flex items-center justify-between shrink-0"
+        className="flex items-center justify-between shrink-0 h-12 px-4 border-b border-[var(--color-border-muted)]"
       >
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
+        <span className="text-sm font-bold text-[var(--color-text)]">
           Context
         </span>
         <button
           onClick={refreshContext}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "var(--radius-md)",
-            color: "var(--color-text-muted)",
-          }}
-          className="flex items-center justify-center hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-all"
           title="Refresh"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M1 7a6 6 0 0111.2-3M13 7a6 6 0 01-11.2 3" />
-            <polyline points="1,3 1,7 5,7" />
-            <polyline points="13,11 13,7 9,7" />
-          </svg>
+          <RotateCw size={14} strokeWidth={2} />
         </button>
       </div>
 
       {/* Sections */}
-      {context?.providers.map((provider) => (
-        <ProviderSection key={provider.provider} provider={provider} />
-      ))}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {context?.providers.map((provider) => (
+          <ProviderSection key={provider.provider} provider={provider} />
+        ))}
 
-      {!context?.providers.length && cwd && (
-        <div
-          style={{
-            padding: "var(--sp-8) var(--sp-3)",
-            color: "var(--color-text-muted)",
-            fontSize: 12,
-            textAlign: "center",
-          }}
-        >
-          No project detected
-        </div>
-      )}
+        {!context?.providers.length && cwd && (
+          <div className="py-20 px-4 text-center text-xs text-[var(--color-text-muted)]">
+            No project detected
+          </div>
+        )}
+      </div>
     </aside>
+
   );
 }
 
@@ -119,20 +99,15 @@ function ProviderSection({ provider }: { provider: ContextInfo }) {
         style={{ height: 32, padding: "0 var(--sp-3)" }}
         className="w-full flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors"
       >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke="var(--color-text-muted)"
-          strokeWidth="1.5"
+        <ChevronDown
+          size={12}
+          strokeWidth={2}
           style={{
             transform: collapsed ? "rotate(-90deg)" : "rotate(0)",
             transition: "var(--transition-fast)",
+            color: "var(--color-text-muted)",
           }}
-        >
-          <polyline points="3,4 6,7 9,4" />
-        </svg>
+        />
         <span
           style={{
             width: 8,
