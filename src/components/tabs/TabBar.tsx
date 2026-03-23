@@ -13,7 +13,7 @@ export function TabBar() {
   }, [createNewSession]);
 
   return (
-    <div className="flex items-center bg-[#181825] border-b border-[#313244] h-9 select-none">
+    <div className="flex items-center bg-[var(--ui-bg-secondary)] border-b border-[var(--ui-border)] h-9 select-none">
       <div className="flex-1 flex items-center overflow-x-auto scrollbar-none">
         {sessions.map((session, idx) => (
           <Tab
@@ -28,7 +28,7 @@ export function TabBar() {
       </div>
       <button
         onClick={handleNewTab}
-        className="px-3 h-full text-[#6c7086] hover:text-[#cdd6f4] hover:bg-[#313244] transition-colors text-lg leading-none"
+        className="px-3 h-full text-[var(--ui-fg-dim)] hover:text-[var(--ui-fg)] hover:bg-[#313244] transition-colors text-lg leading-none"
         title="New tab (Ctrl+T)"
       >
         +
@@ -70,18 +70,18 @@ const Tab = React.memo(function Tab({
   return (
     <div
       onClick={handleClick}
-      className={`group flex items-center gap-1 px-3 h-full cursor-pointer border-r border-[#313244] min-w-0 max-w-48 ${
+      className={`group flex items-center gap-1 px-3 h-full cursor-pointer border-r border-[var(--ui-border)] min-w-0 max-w-48 ${
         isActive
-          ? "bg-[#1e1e2e] text-[#cdd6f4] border-b-2 border-b-[#89b4fa]"
-          : "text-[#6c7086] hover:text-[#a6adc8] hover:bg-[#1e1e2e]/50"
+          ? "bg-[var(--ui-bg)] text-[var(--ui-fg)] border-b-2 border-b-[var(--ui-accent)]"
+          : "text-[var(--ui-fg-dim)] hover:text-[var(--ui-fg-muted)] hover:bg-[var(--ui-bg)]/50"
       }`}
       title={session.cwd || session.title}
     >
-      <span className="text-xs text-[#585b70] shrink-0">{index + 1}</span>
+      <span className="text-xs text-[var(--ui-fg-dim)] shrink-0">{index + 1}</span>
       <span className="truncate text-sm">{displayTitle}</span>
       <button
         onClick={handleClose}
-        className="ml-auto shrink-0 w-4 h-4 flex items-center justify-center rounded text-[#585b70] hover:text-[#f38ba8] hover:bg-[#45475a] opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+        className="ml-auto shrink-0 w-4 h-4 flex items-center justify-center rounded text-[var(--ui-fg-dim)] hover:text-[var(--term-red)] hover:bg-[var(--ui-border)] opacity-0 group-hover:opacity-100 transition-opacity text-xs"
         title="Close tab"
       >
         x

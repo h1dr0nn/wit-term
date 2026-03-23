@@ -25,7 +25,7 @@ export function CompletionPopup() {
   if (!visible || items.length === 0) return null;
 
   return (
-    <div className="absolute bottom-8 left-1 z-50 max-h-64 min-w-64 max-w-96 overflow-auto rounded border border-[#45475a] bg-[#313244] shadow-lg font-mono text-sm">
+    <div className="absolute bottom-8 left-1 z-50 max-h-64 min-w-64 max-w-96 overflow-auto rounded border border-[var(--ui-border)] bg-[var(--ui-bg-tertiary)] shadow-lg font-mono text-sm">
       {items.map((item, idx) => (
         <CompletionRow key={idx} item={item} selected={idx === selectedIndex} />
       ))}
@@ -45,13 +45,13 @@ const CompletionRow = React.memo(function CompletionRow({ item, selected }: Comp
   return (
     <div
       className={`flex items-center gap-2 px-2 py-1 ${
-        selected ? "bg-[#45475a]" : "hover:bg-[#3b3f52]"
+        selected ? "bg-[var(--ui-border)]" : "hover:bg-[var(--ui-bg-secondary)]"
       }`}
     >
       <span className={`text-xs font-bold w-8 shrink-0 ${kindColor}`}>{kindLabel}</span>
-      <span className="text-[#cdd6f4] truncate flex-1">{item.display}</span>
+      <span className="text-[var(--ui-fg)] truncate flex-1">{item.display}</span>
       {item.description && (
-        <span className="text-[#6c7086] text-xs truncate max-w-40">{item.description}</span>
+        <span className="text-[var(--ui-fg-dim)] text-xs truncate max-w-40">{item.description}</span>
       )}
     </div>
   );

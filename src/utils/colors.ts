@@ -1,47 +1,36 @@
 import type { ColorData } from "../stores/terminalStore";
 
-// Standard ANSI 16-color palette (Catppuccin Mocha-inspired)
-const NAMED_COLORS: Record<string, string> = {
-  Black: "#45475a",
-  Red: "#f38ba8",
-  Green: "#a6e3a1",
-  Yellow: "#f9e2af",
-  Blue: "#89b4fa",
-  Magenta: "#f5c2e7",
-  Cyan: "#94e2d5",
-  White: "#bac2de",
-  BrightBlack: "#585b70",
-  BrightRed: "#f38ba8",
-  BrightGreen: "#a6e3a1",
-  BrightYellow: "#f9e2af",
-  BrightBlue: "#89b4fa",
-  BrightMagenta: "#f5c2e7",
-  BrightCyan: "#94e2d5",
-  BrightWhite: "#cdd6f4",
+// Map ANSI named colors to CSS custom properties
+const NAMED_COLOR_VARS: Record<string, string> = {
+  Black: "var(--term-black)",
+  Red: "var(--term-red)",
+  Green: "var(--term-green)",
+  Yellow: "var(--term-yellow)",
+  Blue: "var(--term-blue)",
+  Magenta: "var(--term-magenta)",
+  Cyan: "var(--term-cyan)",
+  White: "var(--term-white)",
+  BrightBlack: "var(--term-bright-black)",
+  BrightRed: "var(--term-bright-red)",
+  BrightGreen: "var(--term-bright-green)",
+  BrightYellow: "var(--term-bright-yellow)",
+  BrightBlue: "var(--term-bright-blue)",
+  BrightMagenta: "var(--term-bright-magenta)",
+  BrightCyan: "var(--term-bright-cyan)",
+  BrightWhite: "var(--term-bright-white)",
 };
 
-// 256-color lookup table (first 16 are ANSI, 16-231 are 6x6x6 cube, 232-255 are grayscale)
+// Indexed color names for the first 16 colors
+const INDEXED_NAMES = [
+  "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White",
+  "BrightBlack", "BrightRed", "BrightGreen", "BrightYellow",
+  "BrightBlue", "BrightMagenta", "BrightCyan", "BrightWhite",
+];
+
+// 256-color lookup (16-255)
 function indexed256(index: number): string {
   if (index < 16) {
-    const names = [
-      "Black",
-      "Red",
-      "Green",
-      "Yellow",
-      "Blue",
-      "Magenta",
-      "Cyan",
-      "White",
-      "BrightBlack",
-      "BrightRed",
-      "BrightGreen",
-      "BrightYellow",
-      "BrightBlue",
-      "BrightMagenta",
-      "BrightCyan",
-      "BrightWhite",
-    ];
-    return NAMED_COLORS[names[index]] || "#cdd6f4";
+    return NAMED_COLOR_VARS[INDEXED_NAMES[index]] || "var(--term-fg)";
   }
 
   if (index < 232) {
@@ -62,9 +51,9 @@ function indexed256(index: number): string {
 export function colorToCss(color: ColorData, isFg: boolean): string | undefined {
   switch (color.type) {
     case "Default":
-      return isFg ? "#cdd6f4" : undefined;
+      return isFg ? "var(--term-fg)" : undefined;
     case "Named":
-      return NAMED_COLORS[color.name] || (isFg ? "#cdd6f4" : undefined);
+      return NAMED_COLOR_VARS[color.name] || (isFg ? "var(--term-fg)" : undefined);
     case "Indexed":
       return indexed256(color.index);
     case "Rgb":

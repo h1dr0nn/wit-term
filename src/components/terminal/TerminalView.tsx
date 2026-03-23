@@ -292,7 +292,7 @@ export function TerminalView() {
 
   if (!sessionId) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[#6c7086] text-sm">
+      <div className="flex-1 flex items-center justify-center text-[var(--ui-fg-dim)] text-sm">
         No active session. Press Ctrl+T to create one.
       </div>
     );
@@ -301,7 +301,7 @@ export function TerminalView() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 relative flex flex-col bg-[#1e1e2e] focus:outline-none overflow-hidden p-1"
+      className="flex-1 relative flex flex-col bg-[var(--ui-bg)] focus:outline-none overflow-hidden p-1"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
@@ -309,13 +309,13 @@ export function TerminalView() {
       {snapshot ? (
         <TerminalGrid snapshot={snapshot} />
       ) : (
-        <div className="flex-1 flex items-center justify-center text-[#a6adc8] text-sm">
+        <div className="flex-1 flex items-center justify-center text-[var(--ui-fg-muted)] text-sm">
           Loading...
         </div>
       )}
       <CompletionPopup />
       {exited && (
-        <div className="text-[#a6adc8] text-sm p-2">[Process exited]</div>
+        <div className="text-[var(--ui-fg-muted)] text-sm p-2">[Process exited]</div>
       )}
     </div>
   );

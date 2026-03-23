@@ -3,11 +3,15 @@ import { TerminalView } from "./components/terminal/TerminalView";
 import { TabBar } from "./components/tabs/TabBar";
 import { SessionSidebar } from "./components/sidebar/SessionSidebar";
 import { useSessionStore } from "./stores/sessionStore";
+import { useTheme } from "./hooks/useTheme";
 
 function App() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const sessions = useSessionStore((s) => s.sessions);
   const createNewSession = useSessionStore((s) => s.createNewSession);
+
+  // Initialize theme system
+  useTheme();
 
   // Create first session on mount
   useEffect(() => {
@@ -29,7 +33,7 @@ function App() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen bg-[#1e1e2e]">
+    <div className="flex h-screen w-screen bg-[var(--ui-bg)]">
       {sidebarVisible && <SessionSidebar />}
       <div className="flex-1 flex flex-col min-w-0">
         {sessions.length > 1 && <TabBar />}

@@ -2,6 +2,41 @@
 
 :root {
   --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+
+  /* Default theme (wit-dark) — overridden by JS on load */
+  --term-fg: #cdd6f4;
+  --term-bg: #1e1e2e;
+  --term-cursor: #f5e0dc;
+  --term-selection-bg: #45475a;
+  --term-selection-fg: #cdd6f4;
+
+  --term-black: #45475a;
+  --term-red: #f38ba8;
+  --term-green: #a6e3a1;
+  --term-yellow: #f9e2af;
+  --term-blue: #89b4fa;
+  --term-magenta: #f5c2e7;
+  --term-cyan: #94e2d5;
+  --term-white: #bac2de;
+
+  --term-bright-black: #585b70;
+  --term-bright-red: #f38ba8;
+  --term-bright-green: #a6e3a1;
+  --term-bright-yellow: #f9e2af;
+  --term-bright-blue: #89b4fa;
+  --term-bright-magenta: #f5c2e7;
+  --term-bright-cyan: #94e2d5;
+  --term-bright-white: #cdd6f4;
+
+  /* Derived UI colors */
+  --ui-bg: #1e1e2e;
+  --ui-bg-secondary: #181825;
+  --ui-bg-tertiary: #313244;
+  --ui-border: #313244;
+  --ui-fg: #cdd6f4;
+  --ui-fg-muted: #a6adc8;
+  --ui-fg-dim: #6c7086;
+  --ui-accent: #89b4fa;
 }
 
 html,
@@ -12,7 +47,16 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #1e1e2e;
-  color: #cdd6f4;
+  background-color: var(--ui-bg);
+  color: var(--ui-fg);
   font-family: var(--font-mono);
+}
+
+/* Hide scrollbar in tab overflow */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
