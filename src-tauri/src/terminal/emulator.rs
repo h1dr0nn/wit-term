@@ -14,8 +14,12 @@ pub struct Emulator {
     saved_cursor: Option<Cursor>,
     /// Title set by OSC sequences.
     pub title: Option<String>,
+    /// Current working directory from OSC 7.
+    pub cwd: Option<std::path::PathBuf>,
     /// Whether the grid has changed since the last snapshot.
     dirty: bool,
+    /// Whether the CWD changed since last check.
+    cwd_dirty: bool,
 }
 
 impl Emulator {
@@ -27,7 +31,9 @@ impl Emulator {
             parser: Parser::new(),
             saved_cursor: None,
             title: None,
+            cwd: None,
             dirty: true,
+            cwd_dirty: false,
         }
     }
 
@@ -44,6 +50,13 @@ impl Emulator {
         let was_dirty = self.dirty;
         self.dirty = false;
         was_dirty
+    }
+
+    /// Check and clear the CWD dirty flag.
+    pub fn take_cwd_dirty(&mut self) -> bool {
+        let was = self.cwd_dirty;
+        self.cwd_dirty = false;
+        was
     }
 
     /// Get a full grid snapshot for the frontend.
@@ -562,10 +575,66 @@ impl Emulator {
                         Some(String::from_utf8_lossy(&parts[1]).into_owned());
                 }
             }
+            // CWD reporting: OSC 7 ; file://hostname/path ST
+            "7" => {
+                if parts.len() > 1 {
+                    let uri = String::from_utf8_lossy(&parts[1]);
+                    if let Some(path) = parse_file_uri(&uri) {
+                        self.cwd = Some(std::path::PathBuf::from(path));
+                        self.cwd_dirty = true;
+                    }
+                }
+            }
             _ => {
                 log::trace!("Unhandled OSC: cmd={cmd}");
             }
         }
+    }
+}
+
+/// Parse a file:// URI into a filesystem path.
+/// Handles: `file://hostname/path` and `file:///path`
+fn parse_file_uri(uri: &str) -> Option<String> {
+    let uri = uri.trim();
+    if let Some(rest) = uri.strip_prefix("file://") {
+        // Skip hostname (everything before the first / after file://)
+        if let Some(slash_pos) = rest.find('/') {
+            let path = &rest[slash_pos..];
+            // URL-decode percent-encoded characters
+            Some(url_decode(path))
+        } else {
+            None
+        }
+    } else {
+        // Bare path
+        Some(uri.to_string())
+    }
+}
+
+/// Simple URL percent-decoding.
+fn url_decode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.bytes();
+    while let Some(b) = chars.next() {
+        if b == b'%' {
+            let hi = chars.next().and_then(hex_val);
+            let lo = chars.next().and_then(hex_val);
+            if let (Some(h), Some(l)) = (hi, lo) {
+                result.push((h << 4 | l) as char);
+            }
+        } else {
+            result.push(b as char);
+        }
+    }
+    result
+}
+
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
     }
 }
 

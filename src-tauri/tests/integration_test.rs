@@ -321,3 +321,32 @@ fn test_partial_sequences_across_reads() {
         wit_lib::terminal::Color::Named(wit_lib::terminal::NamedColor::Red)
     );
 }
+
+#[test]
+fn test_osc7_cwd_tracking() {
+    let mut emu = Emulator::new(80, 24);
+    assert!(emu.cwd.is_none());
+
+    // OSC 7 with file URI
+    emu.process(b"\x1b]7;file://localhost/home/user/project\x07");
+    assert_eq!(
+        emu.cwd.as_ref().unwrap().to_str().unwrap(),
+        "/home/user/project"
+    );
+    assert!(emu.take_cwd_dirty());
+    assert!(!emu.take_cwd_dirty()); // Second call returns false
+
+    // Update CWD
+    emu.process(b"\x1b]7;file:///tmp/test\x07");
+    assert_eq!(emu.cwd.as_ref().unwrap().to_str().unwrap(), "/tmp/test");
+}
+
+#[test]
+fn test_osc7_url_encoded() {
+    let mut emu = Emulator::new(80, 24);
+    emu.process(b"\x1b]7;file:///home/user/my%20project\x07");
+    assert_eq!(
+        emu.cwd.as_ref().unwrap().to_str().unwrap(),
+        "/home/user/my project"
+    );
+}

@@ -23,6 +23,12 @@ struct SessionExitedPayload {
 }
 
 #[derive(Clone, serde::Serialize)]
+struct CwdChangedPayload {
+    session_id: String,
+    cwd: String,
+}
+
+#[derive(Clone, serde::Serialize)]
 struct TitleChangedPayload {
     session_id: String,
     title: String,
@@ -49,6 +55,12 @@ pub fn init_event_forwarding(app: &AppHandle) {
                                 session_id,
                                 snapshot,
                             },
+                        );
+                    }
+                    SessionEvent::CwdChanged { session_id, cwd } => {
+                        let _ = app_handle.emit(
+                            "cwd_changed",
+                            CwdChangedPayload { session_id, cwd },
                         );
                     }
                     SessionEvent::TitleChanged { session_id, title } => {

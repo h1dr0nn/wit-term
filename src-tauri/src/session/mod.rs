@@ -30,6 +30,11 @@ pub enum SessionEvent {
         session_id: SessionId,
         title: String,
     },
+    /// Current working directory changed via OSC 7.
+    CwdChanged {
+        session_id: SessionId,
+        cwd: String,
+    },
     /// Session process exited.
     Exited {
         session_id: SessionId,
@@ -105,6 +110,7 @@ impl SessionManager {
             .spawn(move || {
                 let mut buf = [0u8; 8192];
                 let mut last_title: Option<String> = None;
+                let mut last_cwd: Option<std::path::PathBuf> = None;
 
                 loop {
                     if shutdown_rx.try_recv().is_ok() {
@@ -137,6 +143,19 @@ impl SessionManager {
                                 });
                             }
                             last_title = emu.title.clone();
+                        }
+
+                        // Check for CWD changes (OSC 7)
+                        if emu.take_cwd_dirty() {
+                            if let Some(cwd) = &emu.cwd {
+                                if emu.cwd != last_cwd {
+                                    let _ = event_tx.send(SessionEvent::CwdChanged {
+                                        session_id: session_id.clone(),
+                                        cwd: cwd.to_string_lossy().into_owned(),
+                                    });
+                                    last_cwd = emu.cwd.clone();
+                                }
+                            }
                         }
 
                         if emu.take_dirty() {
