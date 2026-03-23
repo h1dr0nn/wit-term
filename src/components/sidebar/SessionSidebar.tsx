@@ -1,7 +1,12 @@
 import React, { useCallback } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useSessionStore, type SessionInfo } from "../../stores/sessionStore";
 
-export function SessionSidebar() {
+interface SessionSidebarProps {
+  onCollapse: () => void;
+}
+
+export function SessionSidebar({ onCollapse }: SessionSidebarProps) {
   const sessions = useSessionStore((s) => s.sessions);
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const setActiveSession = useSessionStore((s) => s.setActiveSession);
@@ -10,6 +15,17 @@ export function SessionSidebar() {
 
   const handleNewSession = useCallback(() => {
     createNewSession();
+  }, [createNewSession]);
+
+  const handleOpenFolder = useCallback(async () => {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: "Open Project Folder",
+    });
+    if (selected) {
+      createNewSession(selected as string);
+    }
   }, [createNewSession]);
 
   return (
@@ -27,16 +43,68 @@ export function SessionSidebar() {
       <div
         style={{
           height: 48,
-          padding: "0 var(--sp-3)",
+          padding: "0 var(--sp-2) 0 var(--sp-3)",
           borderBottom: "1px solid var(--color-border-muted)",
         }}
-        className="flex items-center justify-between"
+        className="flex items-center gap-1"
       >
-        <div className="flex items-center gap-2">
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
-            Wit
-          </span>
-        </div>
+        {/* Open Folder button */}
+        <button
+          onClick={handleOpenFolder}
+          title="Open Folder (new session at folder)"
+          className="flex items-center gap-1.5 hover:bg-[var(--color-surface-hover)] transition-colors"
+          style={{
+            height: 28,
+            padding: "0 8px",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--color-text)",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          {/* Folder icon */}
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6l1.5 1.5H12.5C13.33 4.5 14 5.17 14 6V11.5C14 12.33 13.33 13 12.5 13H3.5C2.67 13 2 12.33 2 11.5V4.5Z" />
+          </svg>
+          Wit
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Search button */}
+        <button
+          title="Search sessions"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "var(--radius-md)",
+            color: "var(--color-text-muted)",
+          }}
+          className="flex items-center justify-center hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="6" cy="6" r="4" />
+            <line x1="9" y1="9" x2="12.5" y2="12.5" />
+          </svg>
+        </button>
+
+        {/* Collapse sidebar button */}
+        <button
+          onClick={onCollapse}
+          title="Collapse sidebar (Ctrl+B)"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "var(--radius-md)",
+            color: "var(--color-text-muted)",
+          }}
+          className="flex items-center justify-center hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+        >
+          {/* Sidebar collapse (caret left) */}
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9,3 5,7 9,11" />
+          </svg>
+        </button>
       </div>
 
       {/* Session list */}

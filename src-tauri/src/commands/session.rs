@@ -88,9 +88,17 @@ pub fn init_event_forwarding(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub fn create_session(state: State<'_, SessionManagerState>) -> Result<String, String> {
+pub fn create_session(
+    cwd: Option<String>,
+    state: State<'_, SessionManagerState>,
+) -> Result<String, String> {
     let mut manager = state.0.lock().unwrap();
-    manager.create_session(None)
+    let config = cwd.map(|dir| {
+        let mut c = crate::pty::PtyConfig::default();
+        c.cwd = std::path::PathBuf::from(dir);
+        c
+    });
+    manager.create_session(config)
 }
 
 #[tauri::command]

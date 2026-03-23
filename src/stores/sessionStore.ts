@@ -18,7 +18,7 @@ interface SessionState {
   updateSessionTitle: (id: string, title: string) => void;
   updateSessionCwd: (id: string, cwd: string) => void;
 
-  createNewSession: () => Promise<string>;
+  createNewSession: (cwd?: string) => Promise<string>;
   closeSession: (id: string) => Promise<void>;
   switchToNext: () => void;
   switchToPrevious: () => void;
@@ -62,12 +62,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       sessions: state.sessions.map((s) => (s.id === id ? { ...s, cwd } : s)),
     })),
 
-  createNewSession: async () => {
-    const id = await invoke<string>("create_session");
+  createNewSession: async (cwd?: string) => {
+    const id = await invoke<string>("create_session", { cwd: cwd ?? null });
     get().addSession({
       id,
       title: `Terminal ${get().sessions.length + 1}`,
-      cwd: "",
+      cwd: cwd ?? "",
       createdAt: Date.now(),
     });
     get().setActiveSession(id);
