@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+:root {
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+  font-family: var(--font-mono);
+}
