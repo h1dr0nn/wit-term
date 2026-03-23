@@ -39,6 +39,11 @@
   --ui-accent: #89b4fa;
 }
 
+  /* Header */
+  --header-bg-rgb: 24, 24, 37;
+  --header-height: 38px;
+}
+
 html,
 body,
 #root {
@@ -47,9 +52,23 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: var(--ui-bg);
+  background-color: transparent;
   color: var(--ui-fg);
   font-family: var(--font-mono);
+}
+
+/* Window container with transparency */
+.window-root {
+  background: rgba(var(--header-bg-rgb), 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* When maximized, no border-radius */
+.window-root.maximized {
+  border-radius: 0;
 }
 
 /* Hide scrollbar in tab overflow */
@@ -59,4 +78,19 @@ body,
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Platform-specific: hide macOS spacer on Windows/Linux */
+.macos-only {
+  display: none;
+}
+
+/* Platform-specific: hide window controls on macOS (native traffic lights) */
+@supports (-webkit-touch-callout: none) {
+  .macos-only {
+    display: block;
+  }
+  .non-macos-only {
+    display: none;
+  }
 }
