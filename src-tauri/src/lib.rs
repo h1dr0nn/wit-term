@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod completion;
+pub mod config;
 pub mod context;
 pub mod parser;
 pub mod pty;
@@ -50,6 +51,10 @@ pub fn run() {
             commands::context::get_context,
             commands::context::get_providers,
             commands::completion::request_completions,
+            commands::config::get_config,
+            commands::config::set_config,
+            commands::config::list_themes,
+            commands::config::get_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

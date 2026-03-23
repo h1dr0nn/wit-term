@@ -2,49 +2,139 @@
 name = "systemctl"
 description = "Control the systemd system and service manager"
 
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--version"
+description = "Print the systemd version"
+
+[[command.flags]]
+name = "--type"
+short = "-t"
+description = "Filter by unit type (service, socket, target, etc.)"
+
+[[command.flags]]
+name = "--state"
+description = "Filter by unit state (active, inactive, failed, etc.)"
+
+[[command.flags]]
+name = "--all"
+short = "-a"
+description = "Show all units, including inactive ones"
+
+[[command.flags]]
+name = "--user"
+description = "Talk to the service manager of the calling user"
+
+[[command.flags]]
+name = "--system"
+description = "Talk to the service manager of the system (default)"
+
+[[command.flags]]
+name = "--no-pager"
+description = "Do not pipe output into a pager"
+
+[[command.flags]]
+name = "--no-legend"
+description = "Do not print column headers and footers"
+
+[[command.flags]]
+name = "--no-ask-password"
+description = "Do not ask for system passwords"
+
+[[command.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress informational messages"
+
+[[command.flags]]
+name = "--plain"
+description = "Use a simpler output format when listing units"
+
+# --- Subcommands ---
+
 [[command.subcommands]]
 name = "start"
-description = "Start one or more units"
+description = "Start (activate) one or more units"
+
+[[command.subcommands.flags]]
+name = "--no-block"
+description = "Do not wait for the operation to complete"
 
 [[command.subcommands]]
 name = "stop"
-description = "Stop one or more units"
+description = "Stop (deactivate) one or more units"
+
+[[command.subcommands.flags]]
+name = "--no-block"
+description = "Do not wait for the operation to complete"
 
 [[command.subcommands]]
 name = "restart"
 description = "Restart one or more units"
 
-[[command.subcommands]]
-name = "reload"
-description = "Reload one or more units"
+[[command.subcommands.flags]]
+name = "--no-block"
+description = "Do not wait for the operation to complete"
 
 [[command.subcommands]]
 name = "status"
-description = "Show runtime status of units"
+description = "Show runtime status information about one or more units"
+
+[[command.subcommands.flags]]
+name = "--no-pager"
+description = "Do not pipe output into a pager"
+
+[[command.subcommands.flags]]
+name = "-l"
+description = "Do not truncate output"
+
+[[command.subcommands.flags]]
+name = "-n"
+description = "Number of journal log lines to show"
 
 [[command.subcommands]]
 name = "enable"
-description = "Enable one or more units"
+description = "Enable one or more units to start at boot"
 
 [[command.subcommands.flags]]
 name = "--now"
-description = "Also start the unit"
+description = "Also start the unit after enabling"
+
+[[command.subcommands.flags]]
+name = "--no-reload"
+description = "Do not reload the daemon configuration after enabling"
 
 [[command.subcommands]]
 name = "disable"
-description = "Disable one or more units"
+description = "Disable one or more units from starting at boot"
 
 [[command.subcommands.flags]]
 name = "--now"
-description = "Also stop the unit"
+description = "Also stop the unit after disabling"
+
+[[command.subcommands.flags]]
+name = "--no-reload"
+description = "Do not reload the daemon configuration after disabling"
+
+[[command.subcommands]]
+name = "reload"
+description = "Ask the unit to reload its configuration"
+
+[[command.subcommands.flags]]
+name = "--no-block"
+description = "Do not wait for the operation to complete"
 
 [[command.subcommands]]
 name = "daemon-reload"
-description = "Reload systemd manager configuration"
+description = "Reload the systemd manager configuration"
 
 [[command.subcommands]]
 name = "list-units"
-description = "List units currently in memory"
+description = "List units currently loaded in memory"
 
 [[command.subcommands.flags]]
 name = "--type"
@@ -55,38 +145,37 @@ description = "Filter by unit type"
 name = "--state"
 description = "Filter by unit state"
 
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Show all units including inactive"
+
+[[command.subcommands.flags]]
+name = "--plain"
+description = "Use a simpler output format"
+
+[[command.subcommands.flags]]
+name = "--no-legend"
+description = "Do not print column headers and footers"
+
 [[command.subcommands]]
 name = "list-unit-files"
-description = "List installed unit files"
+description = "List installed unit files and their enablement state"
 
-[[command.subcommands]]
-name = "is-active"
-description = "Check whether units are active"
+[[command.subcommands.flags]]
+name = "--type"
+short = "-t"
+description = "Filter by unit type"
 
-[[command.subcommands]]
-name = "is-enabled"
-description = "Check whether units are enabled"
+[[command.subcommands.flags]]
+name = "--state"
+description = "Filter by enablement state (enabled, disabled, masked, static)"
 
-[[command.subcommands]]
-name = "cat"
-description = "Show unit files and drop-ins"
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Show all unit files"
 
-[[command.subcommands]]
-name = "edit"
-description = "Edit unit files"
-
-[[command.subcommands]]
-name = "show"
-description = "Show properties of units"
-
-[[command.flags]]
-name = "--no-pager"
-description = "Do not pipe output into a pager"
-
-[[command.flags]]
-name = "--no-ask-password"
-description = "Do not ask for system passwords"
-
-[[command.flags]]
-name = "--user"
-description = "Talk to the service manager of the calling user"
+[[command.subcommands.flags]]
+name = "--no-legend"
+description = "Do not print column headers and footers"
