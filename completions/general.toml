@@ -1,0 +1,72 @@
+[command]
+name = "ls"
+description = "List directory contents"
+
+[[command.flags]]
+name = "--all"
+short = "-a"
+description = "Show all files including hidden files starting with ."
+
+[[command.flags]]
+name = "-A"
+description = "Show almost all files (exclude . and ..)"
+
+[[command.flags]]
+name = "--long"
+short = "-l"
+description = "Use a long listing format with details"
+
+[[command.flags]]
+name = "--human-readable"
+short = "-h"
+description = "Print sizes in human readable format (e.g., 1K, 234M)"
+
+[[command.flags]]
+name = "--recursive"
+short = "-R"
+description = "List subdirectories recursively"
+
+[[command.flags]]
+name = "--reverse"
+short = "-r"
+description = "Reverse order while sorting"
+
+[[command.flags]]
+name = "-t"
+description = "Sort by modification time, newest first"
+
+[[command.flags]]
+name = "-S"
+description = "Sort by file size, largest first"
+
+[[command.flags]]
+name = "--classify"
+short = "-F"
+description = "Append indicator (*/=>@|) to entries"
+
+[[command.flags]]
+name = "--color"
+description = "Control color output (auto, always, never)"
+
+[[command.flags]]
+name = "-1"
+description = "List one file per line"
+
+[[command.flags]]
+name = "--directory"
+short = "-d"
+description = "List directories themselves, not their contents"
+
+[[command.flags]]
+name = "--inode"
+short = "-i"
+description = "Print the index number (inode) of each file"
+
+[[command.flags]]
+name = "--no-group"
+short = "-G"
+description = "Do not print group names in long listing"
+
+[[command.flags]]
+name = "--sort"
+description = "Sort by attribute (none, size, time, version, extension)"

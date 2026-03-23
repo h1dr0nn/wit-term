@@ -1,0 +1,543 @@
+[command]
+name = "git"
+description = "Distributed version control system"
+
+[[command.flags]]
+name = "--version"
+description = "Print the git version"
+
+[[command.flags]]
+name = "--help"
+description = "Print help information"
+
+[[command.flags]]
+name = "-C"
+description = "Run as if git was started in the given path"
+
+[[command.flags]]
+name = "--git-dir"
+description = "Set the path to the repository"
+
+[[command.flags]]
+name = "--work-tree"
+description = "Set the path to the working tree"
+
+[[command.flags]]
+name = "--no-pager"
+description = "Do not pipe output into a pager"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "add"
+description = "Add file contents to the staging area"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-A"
+description = "Add all changes including untracked files"
+
+[[command.subcommands.flags]]
+name = "--patch"
+short = "-p"
+description = "Interactively choose hunks to stage"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+short = "-n"
+description = "Show what would be added without actually adding"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Allow adding otherwise ignored files"
+
+[[command.subcommands.flags]]
+name = "--update"
+short = "-u"
+description = "Update tracked files only"
+
+[[command.subcommands.flags]]
+name = "--verbose"
+short = "-v"
+description = "Show files as they are added"
+
+[[command.subcommands]]
+name = "commit"
+description = "Record changes to the repository"
+
+[[command.subcommands.flags]]
+name = "--message"
+short = "-m"
+description = "Use the given message as the commit message"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Automatically stage modified and deleted files"
+
+[[command.subcommands.flags]]
+name = "--amend"
+description = "Amend the previous commit"
+
+[[command.subcommands.flags]]
+name = "--no-edit"
+description = "Use the selected commit message without editing"
+
+[[command.subcommands.flags]]
+name = "--allow-empty"
+description = "Allow recording a commit with no changes"
+
+[[command.subcommands.flags]]
+name = "--signoff"
+short = "-s"
+description = "Add a Signed-off-by trailer"
+
+[[command.subcommands.flags]]
+name = "--verbose"
+short = "-v"
+description = "Show unified diff in the commit message editor"
+
+[[command.subcommands]]
+name = "push"
+description = "Update remote refs along with associated objects"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force push even if remote has diverged"
+
+[[command.subcommands.flags]]
+name = "--set-upstream"
+short = "-u"
+description = "Set upstream tracking reference"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Push all branches"
+
+[[command.subcommands.flags]]
+name = "--tags"
+description = "Push all tags"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+short = "-n"
+description = "Do everything except actually send the updates"
+
+[[command.subcommands.flags]]
+name = "--delete"
+short = "-d"
+description = "Delete the remote branch"
+
+[[command.subcommands.flags]]
+name = "--force-with-lease"
+description = "Force push only if remote matches expected value"
+
+[[command.subcommands]]
+name = "pull"
+description = "Fetch from and integrate with another repository or branch"
+
+[[command.subcommands.flags]]
+name = "--rebase"
+short = "-r"
+description = "Rebase the current branch on top of the upstream branch"
+
+[[command.subcommands.flags]]
+name = "--no-rebase"
+description = "Merge instead of rebasing"
+
+[[command.subcommands.flags]]
+name = "--ff-only"
+description = "Only fast-forward, abort if not possible"
+
+[[command.subcommands.flags]]
+name = "--no-commit"
+description = "Perform the merge but do not commit"
+
+[[command.subcommands.flags]]
+name = "--verbose"
+short = "-v"
+description = "Be more verbose"
+
+[[command.subcommands]]
+name = "fetch"
+description = "Download objects and refs from a remote repository"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Fetch all remotes"
+
+[[command.subcommands.flags]]
+name = "--prune"
+short = "-p"
+description = "Remove remote-tracking references that no longer exist"
+
+[[command.subcommands.flags]]
+name = "--tags"
+short = "-t"
+description = "Fetch all tags from the remote"
+
+[[command.subcommands.flags]]
+name = "--depth"
+description = "Limit fetching to the specified number of commits"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Show what would be done without making changes"
+
+[[command.subcommands]]
+name = "checkout"
+description = "Switch branches or restore working tree files"
+
+[[command.subcommands.flags]]
+name = "-b"
+description = "Create and checkout a new branch"
+
+[[command.subcommands.flags]]
+name = "-B"
+description = "Create or reset and checkout a branch"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force checkout, discarding local changes"
+
+[[command.subcommands.flags]]
+name = "--track"
+short = "-t"
+description = "Set up tracking for the new branch"
+
+[[command.subcommands.flags]]
+name = "--detach"
+description = "Detach HEAD at the named commit"
+
+[[command.subcommands]]
+name = "branch"
+description = "List, create, or delete branches"
+
+[[command.subcommands.flags]]
+name = "--delete"
+short = "-d"
+description = "Delete a branch"
+
+[[command.subcommands.flags]]
+name = "-D"
+description = "Force delete a branch"
+
+[[command.subcommands.flags]]
+name = "--move"
+short = "-m"
+description = "Rename a branch"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "List both local and remote branches"
+
+[[command.subcommands.flags]]
+name = "--remotes"
+short = "-r"
+description = "List remote-tracking branches"
+
+[[command.subcommands.flags]]
+name = "--verbose"
+short = "-v"
+description = "Show hash and commit subject for each branch"
+
+[[command.subcommands]]
+name = "merge"
+description = "Join two or more development histories together"
+
+[[command.subcommands.flags]]
+name = "--no-ff"
+description = "Create a merge commit even for fast-forward merges"
+
+[[command.subcommands.flags]]
+name = "--ff-only"
+description = "Only allow fast-forward merges"
+
+[[command.subcommands.flags]]
+name = "--squash"
+description = "Squash all commits into a single commit"
+
+[[command.subcommands.flags]]
+name = "--abort"
+description = "Abort the current merge"
+
+[[command.subcommands.flags]]
+name = "--no-commit"
+description = "Perform the merge but do not commit"
+
+[[command.subcommands.flags]]
+name = "--message"
+short = "-m"
+description = "Set the commit message for the merge commit"
+
+[[command.subcommands]]
+name = "rebase"
+description = "Reapply commits on top of another base tip"
+
+[[command.subcommands.flags]]
+name = "--interactive"
+short = "-i"
+description = "Make a list of commits to be rebased and let the user edit"
+
+[[command.subcommands.flags]]
+name = "--onto"
+description = "Rebase onto a given branch"
+
+[[command.subcommands.flags]]
+name = "--continue"
+description = "Continue the rebase after resolving conflicts"
+
+[[command.subcommands.flags]]
+name = "--abort"
+description = "Abort the rebase and restore the original branch"
+
+[[command.subcommands.flags]]
+name = "--skip"
+description = "Skip the current patch and continue"
+
+[[command.subcommands.flags]]
+name = "--autosquash"
+description = "Automatically apply fixup and squash commits"
+
+[[command.subcommands]]
+name = "stash"
+description = "Stash changes in the working directory"
+
+[[command.subcommands.flags]]
+name = "--keep-index"
+description = "Keep the staging area intact"
+
+[[command.subcommands.flags]]
+name = "--include-untracked"
+short = "-u"
+description = "Also stash untracked files"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Also stash ignored files"
+
+[[command.subcommands.flags]]
+name = "--message"
+short = "-m"
+description = "Add a description to the stash entry"
+
+[[command.subcommands.flags]]
+name = "--patch"
+short = "-p"
+description = "Interactively select hunks to stash"
+
+[[command.subcommands]]
+name = "log"
+description = "Show commit logs"
+
+[[command.subcommands.flags]]
+name = "--oneline"
+description = "Show each commit on a single line"
+
+[[command.subcommands.flags]]
+name = "--graph"
+description = "Draw a text-based graph of commit history"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Show log for all branches"
+
+[[command.subcommands.flags]]
+name = "--stat"
+description = "Show diffstat for each commit"
+
+[[command.subcommands.flags]]
+name = "-n"
+description = "Limit the number of commits shown"
+
+[[command.subcommands.flags]]
+name = "--author"
+description = "Filter commits by author"
+
+[[command.subcommands.flags]]
+name = "--since"
+description = "Show commits after a specific date"
+
+[[command.subcommands.flags]]
+name = "--pretty"
+description = "Format log output (oneline, short, full, fuller, format:)"
+
+[[command.subcommands]]
+name = "diff"
+description = "Show changes between commits, commit and working tree, etc."
+
+[[command.subcommands.flags]]
+name = "--staged"
+description = "Show changes between index and HEAD"
+
+[[command.subcommands.flags]]
+name = "--cached"
+description = "Synonym for --staged"
+
+[[command.subcommands.flags]]
+name = "--stat"
+description = "Show a diffstat instead of a full diff"
+
+[[command.subcommands.flags]]
+name = "--name-only"
+description = "Show only names of changed files"
+
+[[command.subcommands.flags]]
+name = "--name-status"
+description = "Show names and status of changed files"
+
+[[command.subcommands.flags]]
+name = "--word-diff"
+description = "Show word-level diff"
+
+[[command.subcommands]]
+name = "status"
+description = "Show the working tree status"
+
+[[command.subcommands.flags]]
+name = "--short"
+short = "-s"
+description = "Show output in short format"
+
+[[command.subcommands.flags]]
+name = "--branch"
+short = "-b"
+description = "Show branch and tracking info in short format"
+
+[[command.subcommands.flags]]
+name = "--porcelain"
+description = "Machine-readable output format"
+
+[[command.subcommands.flags]]
+name = "--verbose"
+short = "-v"
+description = "Show textual changes staged for commit"
+
+[[command.subcommands]]
+name = "clone"
+description = "Clone a repository into a new directory"
+
+[[command.subcommands.flags]]
+name = "--depth"
+description = "Create a shallow clone with limited history"
+
+[[command.subcommands.flags]]
+name = "--branch"
+short = "-b"
+description = "Checkout a specific branch after cloning"
+
+[[command.subcommands.flags]]
+name = "--single-branch"
+description = "Clone only the history leading to the tip of a single branch"
+
+[[command.subcommands.flags]]
+name = "--recursive"
+description = "Initialize all submodules"
+
+[[command.subcommands.flags]]
+name = "--bare"
+description = "Create a bare repository"
+
+[[command.subcommands]]
+name = "init"
+description = "Create an empty Git repository or reinitialize an existing one"
+
+[[command.subcommands.flags]]
+name = "--bare"
+description = "Create a bare repository"
+
+[[command.subcommands.flags]]
+name = "--initial-branch"
+short = "-b"
+description = "Set the name of the initial branch"
+
+[[command.subcommands]]
+name = "remote"
+description = "Manage set of tracked repositories"
+aliases = []
+
+[[command.subcommands.flags]]
+name = "--verbose"
+short = "-v"
+description = "Show remote URL after name"
+
+[[command.subcommands]]
+name = "tag"
+description = "Create, list, delete, or verify tags"
+
+[[command.subcommands.flags]]
+name = "--annotate"
+short = "-a"
+description = "Create an annotated tag"
+
+[[command.subcommands.flags]]
+name = "--delete"
+short = "-d"
+description = "Delete a tag"
+
+[[command.subcommands.flags]]
+name = "--list"
+short = "-l"
+description = "List tags matching a pattern"
+
+[[command.subcommands.flags]]
+name = "--message"
+short = "-m"
+description = "Set the tag message"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Replace an existing tag"
+
+[[command.subcommands]]
+name = "reset"
+description = "Reset current HEAD to the specified state"
+
+[[command.subcommands.flags]]
+name = "--soft"
+description = "Reset HEAD only, keep index and working tree"
+
+[[command.subcommands.flags]]
+name = "--mixed"
+description = "Reset HEAD and index, keep working tree (default)"
+
+[[command.subcommands.flags]]
+name = "--hard"
+description = "Reset HEAD, index, and working tree"
+
+[[command.subcommands.flags]]
+name = "--patch"
+short = "-p"
+description = "Interactively select hunks to unstage"
+
+[[command.subcommands]]
+name = "cherry-pick"
+description = "Apply the changes introduced by existing commits"
+
+[[command.subcommands.flags]]
+name = "--no-commit"
+short = "-n"
+description = "Apply changes without creating a commit"
+
+[[command.subcommands.flags]]
+name = "--edit"
+short = "-e"
+description = "Edit the commit message before committing"
+
+[[command.subcommands.flags]]
+name = "--continue"
+description = "Continue the cherry-pick after resolving conflicts"
+
+[[command.subcommands.flags]]
+name = "--abort"
+description = "Abort the cherry-pick and restore the original branch"
+
+[[command.subcommands.flags]]
+name = "--skip"
+description = "Skip the current commit and continue"

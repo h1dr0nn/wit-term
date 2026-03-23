@@ -1,0 +1,350 @@
+[command]
+name = "docker"
+description = "Container platform for building, sharing, and running applications"
+
+[[command.flags]]
+name = "--version"
+short = "-v"
+description = "Print the Docker version"
+
+[[command.flags]]
+name = "--help"
+description = "Print help information"
+
+[[command.flags]]
+name = "--debug"
+short = "-D"
+description = "Enable debug mode"
+
+[[command.flags]]
+name = "--host"
+short = "-H"
+description = "Daemon socket to connect to"
+
+[[command.flags]]
+name = "--context"
+short = "-c"
+description = "Name of the context to use"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "run"
+description = "Create and start a new container"
+
+[[command.subcommands.flags]]
+name = "--detach"
+short = "-d"
+description = "Run container in background"
+
+[[command.subcommands.flags]]
+name = "--interactive"
+short = "-i"
+description = "Keep STDIN open even if not attached"
+
+[[command.subcommands.flags]]
+name = "--tty"
+short = "-t"
+description = "Allocate a pseudo-TTY"
+
+[[command.subcommands.flags]]
+name = "--rm"
+description = "Automatically remove the container when it exits"
+
+[[command.subcommands.flags]]
+name = "--name"
+description = "Assign a name to the container"
+
+[[command.subcommands.flags]]
+name = "--publish"
+short = "-p"
+description = "Publish container port(s) to the host"
+
+[[command.subcommands.flags]]
+name = "--volume"
+short = "-v"
+description = "Bind mount a volume"
+
+[[command.subcommands.flags]]
+name = "--env"
+short = "-e"
+description = "Set environment variables"
+
+[[command.subcommands.flags]]
+name = "--env-file"
+description = "Read environment variables from a file"
+
+[[command.subcommands.flags]]
+name = "--network"
+description = "Connect a container to a network"
+
+[[command.subcommands.flags]]
+name = "--workdir"
+short = "-w"
+description = "Working directory inside the container"
+
+[[command.subcommands.flags]]
+name = "--entrypoint"
+description = "Override the default entrypoint"
+
+[[command.subcommands.flags]]
+name = "--restart"
+description = "Restart policy (no, on-failure, always, unless-stopped)"
+
+[[command.subcommands]]
+name = "build"
+description = "Build an image from a Dockerfile"
+
+[[command.subcommands.flags]]
+name = "--tag"
+short = "-t"
+description = "Name and optionally tag the image (name:tag)"
+
+[[command.subcommands.flags]]
+name = "--file"
+short = "-f"
+description = "Path to the Dockerfile"
+
+[[command.subcommands.flags]]
+name = "--no-cache"
+description = "Do not use cache when building"
+
+[[command.subcommands.flags]]
+name = "--build-arg"
+description = "Set build-time variables"
+
+[[command.subcommands.flags]]
+name = "--target"
+description = "Set the target build stage"
+
+[[command.subcommands.flags]]
+name = "--platform"
+description = "Set target platform for build"
+
+[[command.subcommands.flags]]
+name = "--pull"
+description = "Always pull a newer version of the base image"
+
+[[command.subcommands]]
+name = "pull"
+description = "Download an image from a registry"
+
+[[command.subcommands.flags]]
+name = "--all-tags"
+short = "-a"
+description = "Download all tagged images"
+
+[[command.subcommands.flags]]
+name = "--platform"
+description = "Set platform for the image"
+
+[[command.subcommands.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress verbose output"
+
+[[command.subcommands]]
+name = "push"
+description = "Upload an image to a registry"
+
+[[command.subcommands.flags]]
+name = "--all-tags"
+short = "-a"
+description = "Push all tagged images"
+
+[[command.subcommands.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress verbose output"
+
+[[command.subcommands]]
+name = "ps"
+description = "List containers"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Show all containers (including stopped)"
+
+[[command.subcommands.flags]]
+name = "--quiet"
+short = "-q"
+description = "Only display container IDs"
+
+[[command.subcommands.flags]]
+name = "--filter"
+short = "-f"
+description = "Filter output based on conditions"
+
+[[command.subcommands.flags]]
+name = "--format"
+description = "Format output using a Go template"
+
+[[command.subcommands.flags]]
+name = "--size"
+short = "-s"
+description = "Display total file sizes"
+
+[[command.subcommands]]
+name = "images"
+description = "List images"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Show all images including intermediate"
+
+[[command.subcommands.flags]]
+name = "--quiet"
+short = "-q"
+description = "Only display image IDs"
+
+[[command.subcommands.flags]]
+name = "--filter"
+short = "-f"
+description = "Filter output based on conditions"
+
+[[command.subcommands.flags]]
+name = "--format"
+description = "Format output using a Go template"
+
+[[command.subcommands]]
+name = "exec"
+description = "Execute a command in a running container"
+
+[[command.subcommands.flags]]
+name = "--interactive"
+short = "-i"
+description = "Keep STDIN open"
+
+[[command.subcommands.flags]]
+name = "--tty"
+short = "-t"
+description = "Allocate a pseudo-TTY"
+
+[[command.subcommands.flags]]
+name = "--detach"
+short = "-d"
+description = "Run command in the background"
+
+[[command.subcommands.flags]]
+name = "--env"
+short = "-e"
+description = "Set environment variables"
+
+[[command.subcommands.flags]]
+name = "--workdir"
+short = "-w"
+description = "Working directory inside the container"
+
+[[command.subcommands]]
+name = "stop"
+description = "Stop one or more running containers"
+
+[[command.subcommands.flags]]
+name = "--time"
+short = "-t"
+description = "Seconds to wait before killing the container"
+
+[[command.subcommands]]
+name = "start"
+description = "Start one or more stopped containers"
+
+[[command.subcommands.flags]]
+name = "--attach"
+short = "-a"
+description = "Attach STDOUT/STDERR and forward signals"
+
+[[command.subcommands.flags]]
+name = "--interactive"
+short = "-i"
+description = "Attach container STDIN"
+
+[[command.subcommands]]
+name = "rm"
+description = "Remove one or more containers"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force removal of a running container"
+
+[[command.subcommands.flags]]
+name = "--volumes"
+short = "-v"
+description = "Remove anonymous volumes associated with the container"
+
+[[command.subcommands]]
+name = "rmi"
+description = "Remove one or more images"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force removal of the image"
+
+[[command.subcommands.flags]]
+name = "--no-prune"
+description = "Do not delete untagged parents"
+
+[[command.subcommands]]
+name = "logs"
+description = "Fetch the logs of a container"
+
+[[command.subcommands.flags]]
+name = "--follow"
+short = "-f"
+description = "Follow log output"
+
+[[command.subcommands.flags]]
+name = "--tail"
+short = "-n"
+description = "Number of lines to show from the end"
+
+[[command.subcommands.flags]]
+name = "--timestamps"
+short = "-t"
+description = "Show timestamps"
+
+[[command.subcommands.flags]]
+name = "--since"
+description = "Show logs since a timestamp or relative time"
+
+[[command.subcommands.flags]]
+name = "--until"
+description = "Show logs before a timestamp or relative time"
+
+[[command.subcommands]]
+name = "inspect"
+description = "Return low-level information on Docker objects"
+
+[[command.subcommands.flags]]
+name = "--format"
+short = "-f"
+description = "Format output using a Go template"
+
+[[command.subcommands.flags]]
+name = "--type"
+description = "Return JSON for specified type"
+
+[[command.subcommands]]
+name = "compose"
+description = "Define and run multi-container applications with Docker Compose"
+
+[[command.subcommands.flags]]
+name = "--file"
+short = "-f"
+description = "Specify an alternate compose file"
+
+[[command.subcommands.flags]]
+name = "--project-name"
+short = "-p"
+description = "Specify an alternate project name"
+
+[[command.subcommands.flags]]
+name = "--profile"
+description = "Specify a profile to enable"
+
+[[command.subcommands.flags]]
+name = "--env-file"
+description = "Specify an alternate environment file"

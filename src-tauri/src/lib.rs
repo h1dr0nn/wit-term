@@ -1,18 +1,31 @@
 pub mod commands;
+pub mod completion;
+pub mod context;
 pub mod parser;
 pub mod pty;
 pub mod session;
 pub mod terminal;
 
+use commands::completion::CompletionEngineState;
 use commands::session::SessionManagerState;
+use completion::CompletionEngine;
+use context::ContextEngine;
 use session::SessionManager;
+use std::path::PathBuf;
 use std::sync::Mutex;
+
+/// Shared context engine state.
+pub struct ContextEngineState(pub Mutex<ContextEngine>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .manage(SessionManagerState(Mutex::new(SessionManager::new())))
+        .manage(ContextEngineState(Mutex::new(ContextEngine::new())))
+        .manage(CompletionEngineState(Mutex::new(CompletionEngine::new(
+            &PathBuf::from("completions"),
+        ))))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -34,6 +47,9 @@ pub fn run() {
             commands::session::send_input,
             commands::session::resize_session,
             commands::session::get_snapshot,
+            commands::context::get_context,
+            commands::context::get_providers,
+            commands::completion::request_completions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { TerminalGrid } from "./TerminalGrid";
+import { CompletionPopup } from "./CompletionPopup";
 import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
+import { useCompletionStore } from "../../stores/completionStore";
 import { encodeKey } from "../../utils/keyEncoder";
 
 interface GridUpdatePayload {
@@ -15,12 +17,24 @@ interface SessionExitedPayload {
   exit_code: number;
 }
 
+interface CwdChangedPayload {
+  session_id: string;
+  cwd: string;
+}
+
 export function TerminalView() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [exited, setExited] = useState(false);
+  const cwdRef = useRef<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
   const updateGrid = useTerminalStore((s) => s.updateGrid);
   const grids = useTerminalStore((s) => s.grids);
+
+  const completionVisible = useCompletionStore((s) => s.visible);
+  const completionHide = useCompletionStore((s) => s.hide);
+  const completionSelectNext = useCompletionStore((s) => s.selectNext);
+  const completionSelectPrevious = useCompletionStore((s) => s.selectPrevious);
+  const completionGetSelected = useCompletionStore((s) => s.getSelected);
 
   const snapshot = sessionId ? grids.get(sessionId) : undefined;
 
@@ -44,7 +58,7 @@ export function TerminalView() {
     };
   }, []);
 
-  // Listen for grid updates
+  // Listen for events
   useEffect(() => {
     if (!sessionId) return;
 
@@ -60,9 +74,16 @@ export function TerminalView() {
       }
     });
 
+    const unlistenCwd = listen<CwdChangedPayload>("cwd_changed", (event) => {
+      if (event.payload.session_id === sessionId) {
+        cwdRef.current = event.payload.cwd;
+      }
+    });
+
     return () => {
       unlisten.then((fn) => fn());
       unlistenExit.then((fn) => fn());
+      unlistenCwd.then((fn) => fn());
     };
   }, [sessionId, updateGrid]);
 
@@ -91,6 +112,35 @@ export function TerminalView() {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!sessionId || exited) return;
+
+      // Completion popup keyboard handling
+      if (completionVisible) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          completionSelectNext();
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          completionSelectPrevious();
+          return;
+        }
+        if (e.key === "Enter" || e.key === "Tab") {
+          e.preventDefault();
+          const selected = completionGetSelected();
+          if (selected) {
+            // Send the completion text to the terminal
+            invoke("send_input", { sessionId, data: selected.text }).catch(() => {});
+          }
+          completionHide();
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          completionHide();
+          return;
+        }
+      }
 
       // Clipboard: Ctrl+Shift+V = paste
       if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
@@ -125,7 +175,15 @@ export function TerminalView() {
         });
       }
     },
-    [sessionId, exited],
+    [
+      sessionId,
+      exited,
+      completionVisible,
+      completionSelectNext,
+      completionSelectPrevious,
+      completionGetSelected,
+      completionHide,
+    ],
   );
 
   const handleClick = useCallback(() => {
@@ -135,7 +193,7 @@ export function TerminalView() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex flex-col bg-[#1e1e2e] focus:outline-none overflow-hidden p-1"
+      className="flex-1 relative flex flex-col bg-[#1e1e2e] focus:outline-none overflow-hidden p-1"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
@@ -147,6 +205,7 @@ export function TerminalView() {
           {sessionId ? "Loading..." : "Connecting..."}
         </div>
       )}
+      <CompletionPopup />
       {exited && (
         <div className="text-[#a6adc8] text-sm p-2">[Process exited]</div>
       )}

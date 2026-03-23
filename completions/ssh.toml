@@ -1,0 +1,99 @@
+[command]
+name = "ssh"
+description = "OpenSSH remote login client"
+
+[[command.flags]]
+name = "-p"
+description = "Port to connect to on the remote host"
+
+[[command.flags]]
+name = "-i"
+description = "Path to the identity (private key) file"
+
+[[command.flags]]
+name = "-l"
+description = "Login name on the remote machine"
+
+[[command.flags]]
+name = "-L"
+description = "Local port forwarding (local_port:remote_host:remote_port)"
+
+[[command.flags]]
+name = "-R"
+description = "Remote port forwarding (remote_port:local_host:local_port)"
+
+[[command.flags]]
+name = "-D"
+description = "Dynamic application-level port forwarding (SOCKS proxy)"
+
+[[command.flags]]
+name = "-N"
+description = "Do not execute a remote command (useful for port forwarding)"
+
+[[command.flags]]
+name = "-f"
+description = "Go to background just before command execution"
+
+[[command.flags]]
+name = "-v"
+description = "Verbose mode (multiple -v increase verbosity, up to -vvv)"
+
+[[command.flags]]
+name = "-q"
+description = "Quiet mode, suppress most warning and diagnostic messages"
+
+[[command.flags]]
+name = "-o"
+description = "Specify options in the format used in the configuration file"
+
+[[command.flags]]
+name = "-F"
+description = "Specify an alternative per-user configuration file"
+
+[[command.flags]]
+name = "-A"
+description = "Enable forwarding of the authentication agent connection"
+
+[[command.flags]]
+name = "-X"
+description = "Enable X11 forwarding"
+
+[[command.flags]]
+name = "-Y"
+description = "Enable trusted X11 forwarding"
+
+[[command.flags]]
+name = "-C"
+description = "Request compression of all data"
+
+[[command.flags]]
+name = "-T"
+description = "Disable pseudo-terminal allocation"
+
+[[command.flags]]
+name = "-t"
+description = "Force pseudo-terminal allocation"
+
+[[command.flags]]
+name = "-J"
+description = "Connect through a jump host (ProxyJump)"
+
+[[command.flags]]
+name = "-W"
+description = "Forward stdin and stdout to host:port via the tunnel"
+
+[[command.flags]]
+name = "-4"
+description = "Force use of IPv4 addresses only"
+
+[[command.flags]]
+name = "-6"
+description = "Force use of IPv6 addresses only"
+
+[[command.flags]]
+name = "-b"
+description = "Bind to the specified local address before connecting"
+
+[[command.flags]]
+name = "-e"
+description = "Set the escape character (default: ~)"

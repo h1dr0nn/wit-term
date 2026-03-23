@@ -1,0 +1,265 @@
+[command]
+name = "kubectl"
+description = "Kubernetes command-line tool for managing clusters"
+
+[[command.flags]]
+name = "--namespace"
+short = "-n"
+description = "Specify the namespace for the request"
+
+[[command.flags]]
+name = "--context"
+description = "The name of the kubeconfig context to use"
+
+[[command.flags]]
+name = "--kubeconfig"
+description = "Path to the kubeconfig file"
+
+[[command.flags]]
+name = "--output"
+short = "-o"
+description = "Output format (json, yaml, wide, name, custom-columns, jsonpath)"
+
+[[command.flags]]
+name = "--all-namespaces"
+short = "-A"
+description = "List resources across all namespaces"
+
+[[command.flags]]
+name = "--verbose"
+short = "-v"
+description = "Set log verbosity level (0-9)"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "get"
+description = "Display one or many resources"
+
+[[command.subcommands.flags]]
+name = "--output"
+short = "-o"
+description = "Output format (json, yaml, wide, name, jsonpath)"
+
+[[command.subcommands.flags]]
+name = "--watch"
+short = "-w"
+description = "Watch for changes after listing"
+
+[[command.subcommands.flags]]
+name = "--selector"
+short = "-l"
+description = "Filter by label selector"
+
+[[command.subcommands.flags]]
+name = "--all-namespaces"
+short = "-A"
+description = "List across all namespaces"
+
+[[command.subcommands.flags]]
+name = "--field-selector"
+description = "Filter by field selector"
+
+[[command.subcommands.flags]]
+name = "--show-labels"
+description = "Show all labels as the last column"
+
+[[command.subcommands.flags]]
+name = "--sort-by"
+description = "Sort list by the specified field"
+
+[[command.subcommands]]
+name = "describe"
+description = "Show details of a specific resource or group of resources"
+
+[[command.subcommands.flags]]
+name = "--selector"
+short = "-l"
+description = "Filter by label selector"
+
+[[command.subcommands.flags]]
+name = "--all-namespaces"
+short = "-A"
+description = "Describe across all namespaces"
+
+[[command.subcommands.flags]]
+name = "--show-events"
+description = "Show events related to the resource"
+
+[[command.subcommands]]
+name = "apply"
+description = "Apply a configuration to a resource by file name or stdin"
+
+[[command.subcommands.flags]]
+name = "--filename"
+short = "-f"
+description = "File or directory containing the configuration"
+
+[[command.subcommands.flags]]
+name = "--recursive"
+short = "-R"
+description = "Process the directory recursively"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Run in dry-run mode (none, server, client)"
+
+[[command.subcommands.flags]]
+name = "--force"
+description = "Delete and re-create the resource if needed"
+
+[[command.subcommands.flags]]
+name = "--selector"
+short = "-l"
+description = "Filter by label selector"
+
+[[command.subcommands.flags]]
+name = "--server-side"
+description = "Use server-side apply"
+
+[[command.subcommands]]
+name = "delete"
+description = "Delete resources by file names, stdin, resources, or label selector"
+
+[[command.subcommands.flags]]
+name = "--filename"
+short = "-f"
+description = "File or directory containing the resources to delete"
+
+[[command.subcommands.flags]]
+name = "--selector"
+short = "-l"
+description = "Filter by label selector"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Delete all resources in the namespace"
+
+[[command.subcommands.flags]]
+name = "--grace-period"
+description = "Period of time in seconds to wait before forcefully deleting"
+
+[[command.subcommands.flags]]
+name = "--force"
+description = "Immediately remove resources from the API"
+
+[[command.subcommands.flags]]
+name = "--cascade"
+description = "Cascade deletion to dependents (background, orphan, foreground)"
+
+[[command.subcommands]]
+name = "logs"
+description = "Print the logs for a container in a pod"
+
+[[command.subcommands.flags]]
+name = "--follow"
+short = "-f"
+description = "Stream the logs"
+
+[[command.subcommands.flags]]
+name = "--tail"
+description = "Number of lines from the end to show"
+
+[[command.subcommands.flags]]
+name = "--since"
+description = "Show logs since a relative duration (e.g., 5s, 2m, 3h)"
+
+[[command.subcommands.flags]]
+name = "--container"
+short = "-c"
+description = "Print logs of a specific container"
+
+[[command.subcommands.flags]]
+name = "--previous"
+short = "-p"
+description = "Print logs from the previous instance of the container"
+
+[[command.subcommands.flags]]
+name = "--timestamps"
+description = "Include timestamps in log output"
+
+[[command.subcommands]]
+name = "exec"
+description = "Execute a command in a container"
+
+[[command.subcommands.flags]]
+name = "--stdin"
+short = "-i"
+description = "Pass stdin to the container"
+
+[[command.subcommands.flags]]
+name = "--tty"
+short = "-t"
+description = "Allocate a TTY"
+
+[[command.subcommands.flags]]
+name = "--container"
+short = "-c"
+description = "Container name to exec into"
+
+[[command.subcommands]]
+name = "create"
+description = "Create a resource from a file or from stdin"
+
+[[command.subcommands.flags]]
+name = "--filename"
+short = "-f"
+description = "File or directory containing the resource to create"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Run in dry-run mode (none, server, client)"
+
+[[command.subcommands.flags]]
+name = "--output"
+short = "-o"
+description = "Output format (json, yaml, name)"
+
+[[command.subcommands]]
+name = "edit"
+description = "Edit a resource on the server"
+
+[[command.subcommands.flags]]
+name = "--output"
+short = "-o"
+description = "Output format"
+
+[[command.subcommands.flags]]
+name = "--save-config"
+description = "Save the configuration of the resource in the annotation"
+
+[[command.subcommands]]
+name = "scale"
+description = "Set a new size for a deployment, replica set, or stateful set"
+
+[[command.subcommands.flags]]
+name = "--replicas"
+description = "The new desired number of replicas"
+
+[[command.subcommands.flags]]
+name = "--current-replicas"
+description = "Precondition for current size"
+
+[[command.subcommands.flags]]
+name = "--timeout"
+description = "Time to wait for the operation to complete"
+
+[[command.subcommands]]
+name = "rollout"
+description = "Manage the rollout of a resource"
+
+[[command.subcommands.flags]]
+name = "--revision"
+description = "Revision number to roll back to"
+
+[[command.subcommands]]
+name = "port-forward"
+description = "Forward one or more local ports to a pod"
+
+[[command.subcommands.flags]]
+name = "--address"
+description = "Addresses to listen on (comma-separated)"
+
+[[command.subcommands.flags]]
+name = "--pod-running-timeout"
+description = "Time to wait for the pod to start running"

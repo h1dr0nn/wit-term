@@ -1,0 +1,92 @@
+[command]
+name = "systemctl"
+description = "Control the systemd system and service manager"
+
+[[command.subcommands]]
+name = "start"
+description = "Start one or more units"
+
+[[command.subcommands]]
+name = "stop"
+description = "Stop one or more units"
+
+[[command.subcommands]]
+name = "restart"
+description = "Restart one or more units"
+
+[[command.subcommands]]
+name = "reload"
+description = "Reload one or more units"
+
+[[command.subcommands]]
+name = "status"
+description = "Show runtime status of units"
+
+[[command.subcommands]]
+name = "enable"
+description = "Enable one or more units"
+
+[[command.subcommands.flags]]
+name = "--now"
+description = "Also start the unit"
+
+[[command.subcommands]]
+name = "disable"
+description = "Disable one or more units"
+
+[[command.subcommands.flags]]
+name = "--now"
+description = "Also stop the unit"
+
+[[command.subcommands]]
+name = "daemon-reload"
+description = "Reload systemd manager configuration"
+
+[[command.subcommands]]
+name = "list-units"
+description = "List units currently in memory"
+
+[[command.subcommands.flags]]
+name = "--type"
+short = "-t"
+description = "Filter by unit type"
+
+[[command.subcommands.flags]]
+name = "--state"
+description = "Filter by unit state"
+
+[[command.subcommands]]
+name = "list-unit-files"
+description = "List installed unit files"
+
+[[command.subcommands]]
+name = "is-active"
+description = "Check whether units are active"
+
+[[command.subcommands]]
+name = "is-enabled"
+description = "Check whether units are enabled"
+
+[[command.subcommands]]
+name = "cat"
+description = "Show unit files and drop-ins"
+
+[[command.subcommands]]
+name = "edit"
+description = "Edit unit files"
+
+[[command.subcommands]]
+name = "show"
+description = "Show properties of units"
+
+[[command.flags]]
+name = "--no-pager"
+description = "Do not pipe output into a pager"
+
+[[command.flags]]
+name = "--no-ask-password"
+description = "Do not ask for system passwords"
+
+[[command.flags]]
+name = "--user"
+description = "Talk to the service manager of the calling user"

@@ -1,0 +1,417 @@
+[command]
+name = "cargo"
+description = "Rust package manager and build system"
+
+[[command.flags]]
+name = "--version"
+short = "-V"
+description = "Print the cargo version"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--verbose"
+short = "-v"
+description = "Use verbose output"
+
+[[command.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress output"
+
+[[command.flags]]
+name = "--color"
+description = "Control color output (auto, always, never)"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "build"
+description = "Compile the current package"
+aliases = ["b"]
+
+[[command.subcommands.flags]]
+name = "--release"
+short = "-r"
+description = "Build in release mode with optimizations"
+
+[[command.subcommands.flags]]
+name = "--target"
+description = "Build for the given target triple"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--all-features"
+description = "Activate all available features"
+
+[[command.subcommands.flags]]
+name = "--no-default-features"
+description = "Do not activate default features"
+
+[[command.subcommands.flags]]
+name = "--jobs"
+short = "-j"
+description = "Number of parallel jobs"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Build only the specified package"
+
+[[command.subcommands]]
+name = "run"
+description = "Build and run a binary or example"
+aliases = ["r"]
+
+[[command.subcommands.flags]]
+name = "--release"
+short = "-r"
+description = "Run in release mode with optimizations"
+
+[[command.subcommands.flags]]
+name = "--bin"
+description = "Name of the binary target to run"
+
+[[command.subcommands.flags]]
+name = "--example"
+description = "Name of the example target to run"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Package with the target to run"
+
+[[command.subcommands]]
+name = "test"
+description = "Run the tests"
+aliases = ["t"]
+
+[[command.subcommands.flags]]
+name = "--release"
+short = "-r"
+description = "Test in release mode"
+
+[[command.subcommands.flags]]
+name = "--no-run"
+description = "Compile but do not run tests"
+
+[[command.subcommands.flags]]
+name = "--doc"
+description = "Test only documentation tests"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Test only the specified package"
+
+[[command.subcommands.flags]]
+name = "--lib"
+description = "Test only the library"
+
+[[command.subcommands.flags]]
+name = "--jobs"
+short = "-j"
+description = "Number of parallel jobs"
+
+[[command.subcommands]]
+name = "bench"
+description = "Run benchmarks"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--no-run"
+description = "Compile but do not run benchmarks"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Benchmark only the specified package"
+
+[[command.subcommands]]
+name = "check"
+description = "Check the package for errors without building"
+aliases = ["c"]
+
+[[command.subcommands.flags]]
+name = "--release"
+short = "-r"
+description = "Check in release mode"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--all-features"
+description = "Activate all available features"
+
+[[command.subcommands.flags]]
+name = "--all-targets"
+description = "Check all targets"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Check only the specified package"
+
+[[command.subcommands]]
+name = "clean"
+description = "Remove the target directory"
+
+[[command.subcommands.flags]]
+name = "--release"
+short = "-r"
+description = "Clean release artifacts"
+
+[[command.subcommands.flags]]
+name = "--doc"
+description = "Clean just the documentation directory"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Clean only the specified package"
+
+[[command.subcommands]]
+name = "doc"
+description = "Build package documentation"
+aliases = ["d"]
+
+[[command.subcommands.flags]]
+name = "--open"
+description = "Open the docs in a browser after building"
+
+[[command.subcommands.flags]]
+name = "--no-deps"
+description = "Do not build documentation for dependencies"
+
+[[command.subcommands.flags]]
+name = "--document-private-items"
+description = "Document private items"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Document only the specified package"
+
+[[command.subcommands]]
+name = "new"
+description = "Create a new Cargo package"
+
+[[command.subcommands.flags]]
+name = "--bin"
+description = "Create a binary (application) package"
+
+[[command.subcommands.flags]]
+name = "--lib"
+description = "Create a library package"
+
+[[command.subcommands.flags]]
+name = "--edition"
+description = "Set the Rust edition (2015, 2018, 2021)"
+
+[[command.subcommands.flags]]
+name = "--name"
+description = "Set the package name"
+
+[[command.subcommands.flags]]
+name = "--vcs"
+description = "Initialize a VCS repository (git, hg, pijul, fossil, none)"
+
+[[command.subcommands]]
+name = "init"
+description = "Create a new Cargo package in an existing directory"
+
+[[command.subcommands.flags]]
+name = "--bin"
+description = "Create a binary (application) package"
+
+[[command.subcommands.flags]]
+name = "--lib"
+description = "Create a library package"
+
+[[command.subcommands.flags]]
+name = "--edition"
+description = "Set the Rust edition"
+
+[[command.subcommands]]
+name = "add"
+description = "Add a dependency to Cargo.toml"
+
+[[command.subcommands.flags]]
+name = "--dev"
+short = "-D"
+description = "Add as a dev dependency"
+
+[[command.subcommands.flags]]
+name = "--build"
+short = "-B"
+description = "Add as a build dependency"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--no-default-features"
+description = "Disable the default features"
+
+[[command.subcommands.flags]]
+name = "--rename"
+description = "Rename the dependency"
+
+[[command.subcommands.flags]]
+name = "--path"
+description = "Filesystem path to the crate to add"
+
+[[command.subcommands.flags]]
+name = "--git"
+description = "Git repository URL to add from"
+
+[[command.subcommands]]
+name = "remove"
+description = "Remove a dependency from Cargo.toml"
+aliases = ["rm"]
+
+[[command.subcommands.flags]]
+name = "--dev"
+short = "-D"
+description = "Remove as a dev dependency"
+
+[[command.subcommands.flags]]
+name = "--build"
+short = "-B"
+description = "Remove as a build dependency"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Package to remove the dependency from"
+
+[[command.subcommands]]
+name = "update"
+description = "Update dependencies in Cargo.lock"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Show what would be updated without actually updating"
+
+[[command.subcommands.flags]]
+name = "--aggressive"
+description = "Force updating all dependencies of the specified packages"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Update only the specified package"
+
+[[command.subcommands]]
+name = "publish"
+description = "Publish a package to crates.io"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Perform all checks without uploading"
+
+[[command.subcommands.flags]]
+name = "--token"
+description = "API token for crates.io"
+
+[[command.subcommands.flags]]
+name = "--allow-dirty"
+description = "Allow publishing from a dirty working directory"
+
+[[command.subcommands.flags]]
+name = "--no-verify"
+description = "Skip the build verification step"
+
+[[command.subcommands]]
+name = "install"
+description = "Install a Rust binary"
+
+[[command.subcommands.flags]]
+name = "--path"
+description = "Filesystem path to the crate to install"
+
+[[command.subcommands.flags]]
+name = "--git"
+description = "Git URL to install from"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force overwrite of existing binaries"
+
+[[command.subcommands.flags]]
+name = "--locked"
+description = "Require Cargo.lock is up to date"
+
+[[command.subcommands.flags]]
+name = "--version"
+description = "Specify a version to install"
+
+[[command.subcommands]]
+name = "clippy"
+description = "Run Clippy lints on the package"
+
+[[command.subcommands.flags]]
+name = "--fix"
+description = "Automatically apply lint suggestions"
+
+[[command.subcommands.flags]]
+name = "--all-targets"
+description = "Check all targets"
+
+[[command.subcommands.flags]]
+name = "--features"
+short = "-F"
+description = "Space or comma separated list of features to activate"
+
+[[command.subcommands.flags]]
+name = "--all-features"
+description = "Activate all available features"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Run clippy on the specified package"
+
+[[command.subcommands]]
+name = "fmt"
+description = "Format Rust source code with rustfmt"
+
+[[command.subcommands.flags]]
+name = "--check"
+description = "Run in check mode, exit with error if not formatted"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Format all packages in the workspace"
+
+[[command.subcommands.flags]]
+name = "--package"
+short = "-p"
+description = "Format only the specified package"

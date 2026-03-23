@@ -1,0 +1,243 @@
+[command]
+name = "npm"
+description = "Node.js package manager"
+
+[[command.flags]]
+name = "--version"
+short = "-v"
+description = "Print the npm version"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--registry"
+description = "Set the npm registry URL"
+
+[[command.flags]]
+name = "--loglevel"
+description = "Set the log level (silent, error, warn, notice, http, info, verbose, silly)"
+
+[[command.flags]]
+name = "--global"
+short = "-g"
+description = "Operate in global mode"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "install"
+description = "Install project dependencies"
+aliases = ["i", "add"]
+
+[[command.subcommands.flags]]
+name = "--save-dev"
+short = "-D"
+description = "Save package as a dev dependency"
+
+[[command.subcommands.flags]]
+name = "--save-exact"
+short = "-E"
+description = "Save exact version instead of using semver range"
+
+[[command.subcommands.flags]]
+name = "--global"
+short = "-g"
+description = "Install package globally"
+
+[[command.subcommands.flags]]
+name = "--production"
+description = "Do not install devDependencies"
+
+[[command.subcommands.flags]]
+name = "--no-save"
+description = "Do not save to package.json"
+
+[[command.subcommands.flags]]
+name = "--legacy-peer-deps"
+description = "Ignore peer dependency conflicts"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force installation even with conflicts"
+
+[[command.subcommands]]
+name = "run"
+description = "Run a script defined in package.json"
+aliases = ["run-script"]
+
+[[command.subcommands.flags]]
+name = "--silent"
+short = "-s"
+description = "Suppress output from the script"
+
+[[command.subcommands.flags]]
+name = "--if-present"
+description = "Do not error if the script is not defined"
+
+[[command.subcommands]]
+name = "test"
+description = "Run the test script"
+aliases = ["t", "tst"]
+
+[[command.subcommands]]
+name = "build"
+description = "Run the build script"
+
+[[command.subcommands]]
+name = "start"
+description = "Run the start script"
+
+[[command.subcommands]]
+name = "publish"
+description = "Publish a package to the registry"
+
+[[command.subcommands.flags]]
+name = "--tag"
+description = "Register the package with the given dist-tag"
+
+[[command.subcommands.flags]]
+name = "--access"
+description = "Set access level (public or restricted)"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Do everything except actually publish"
+
+[[command.subcommands.flags]]
+name = "--otp"
+description = "Provide a one-time password for 2FA"
+
+[[command.subcommands]]
+name = "init"
+description = "Create a new package.json file"
+aliases = ["create"]
+
+[[command.subcommands.flags]]
+name = "--yes"
+short = "-y"
+description = "Accept all defaults without prompting"
+
+[[command.subcommands.flags]]
+name = "--scope"
+description = "Create a scoped package"
+
+[[command.subcommands]]
+name = "update"
+description = "Update installed packages"
+aliases = ["up", "upgrade"]
+
+[[command.subcommands.flags]]
+name = "--global"
+short = "-g"
+description = "Update global packages"
+
+[[command.subcommands.flags]]
+name = "--save"
+short = "-S"
+description = "Save updated versions to package.json"
+
+[[command.subcommands]]
+name = "uninstall"
+description = "Remove a package"
+aliases = ["un", "remove", "rm"]
+
+[[command.subcommands.flags]]
+name = "--save"
+short = "-S"
+description = "Remove from dependencies in package.json"
+
+[[command.subcommands.flags]]
+name = "--save-dev"
+short = "-D"
+description = "Remove from devDependencies"
+
+[[command.subcommands.flags]]
+name = "--global"
+short = "-g"
+description = "Uninstall global package"
+
+[[command.subcommands]]
+name = "list"
+description = "List installed packages"
+aliases = ["ls", "la", "ll"]
+
+[[command.subcommands.flags]]
+name = "--depth"
+description = "Max display depth of the dependency tree"
+
+[[command.subcommands.flags]]
+name = "--global"
+short = "-g"
+description = "List global packages"
+
+[[command.subcommands.flags]]
+name = "--json"
+description = "Output in JSON format"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Show all packages, not just top-level"
+
+[[command.subcommands]]
+name = "audit"
+description = "Run a security audit on installed packages"
+
+[[command.subcommands.flags]]
+name = "--fix"
+description = "Automatically install compatible updates for vulnerabilities"
+
+[[command.subcommands.flags]]
+name = "--json"
+description = "Output in JSON format"
+
+[[command.subcommands.flags]]
+name = "--production"
+description = "Only audit production dependencies"
+
+[[command.subcommands]]
+name = "cache"
+description = "Manipulate the package cache"
+
+[[command.subcommands.flags]]
+name = "--cache"
+description = "Set the location of the cache directory"
+
+[[command.subcommands]]
+name = "ci"
+description = "Clean install based on package-lock.json"
+
+[[command.subcommands.flags]]
+name = "--production"
+description = "Do not install devDependencies"
+
+[[command.subcommands]]
+name = "pack"
+description = "Create a tarball from a package"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+description = "Do everything except actually pack"
+
+[[command.subcommands]]
+name = "version"
+description = "Bump the package version"
+
+[[command.subcommands.flags]]
+name = "--major"
+description = "Bump the major version"
+
+[[command.subcommands.flags]]
+name = "--minor"
+description = "Bump the minor version"
+
+[[command.subcommands.flags]]
+name = "--patch"
+description = "Bump the patch version"
+
+[[command.subcommands.flags]]
+name = "--no-git-tag-version"
+description = "Do not create a git tag for the version"

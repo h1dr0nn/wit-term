@@ -1,0 +1,216 @@
+[command]
+name = "pip"
+description = "Python package installer"
+
+[[command.flags]]
+name = "--version"
+short = "-V"
+description = "Print the pip version"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--verbose"
+short = "-v"
+description = "Give more output (option is additive)"
+
+[[command.flags]]
+name = "--quiet"
+short = "-q"
+description = "Give less output (option is additive)"
+
+[[command.flags]]
+name = "--no-color"
+description = "Suppress colored output"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "install"
+description = "Install packages from PyPI or other sources"
+
+[[command.subcommands.flags]]
+name = "--requirement"
+short = "-r"
+description = "Install from the given requirements file"
+
+[[command.subcommands.flags]]
+name = "--upgrade"
+short = "-U"
+description = "Upgrade packages to the newest available version"
+
+[[command.subcommands.flags]]
+name = "--editable"
+short = "-e"
+description = "Install a project in editable mode from a local path"
+
+[[command.subcommands.flags]]
+name = "--target"
+short = "-t"
+description = "Install packages into the specified directory"
+
+[[command.subcommands.flags]]
+name = "--user"
+description = "Install to the user install directory"
+
+[[command.subcommands.flags]]
+name = "--no-deps"
+description = "Do not install package dependencies"
+
+[[command.subcommands.flags]]
+name = "--pre"
+description = "Include pre-release and development versions"
+
+[[command.subcommands.flags]]
+name = "--force-reinstall"
+description = "Reinstall all packages even if already up-to-date"
+
+[[command.subcommands.flags]]
+name = "--index-url"
+short = "-i"
+description = "Base URL of the Python Package Index"
+
+[[command.subcommands.flags]]
+name = "--extra-index-url"
+description = "Extra URLs of package indexes"
+
+[[command.subcommands.flags]]
+name = "--no-cache-dir"
+description = "Disable the cache"
+
+[[command.subcommands.flags]]
+name = "--constraint"
+short = "-c"
+description = "Constrain versions using the given constraints file"
+
+[[command.subcommands]]
+name = "uninstall"
+description = "Uninstall packages"
+
+[[command.subcommands.flags]]
+name = "--requirement"
+short = "-r"
+description = "Uninstall packages listed in the given requirements file"
+
+[[command.subcommands.flags]]
+name = "--yes"
+short = "-y"
+description = "Do not ask for confirmation"
+
+[[command.subcommands]]
+name = "freeze"
+description = "Output installed packages in requirements format"
+
+[[command.subcommands.flags]]
+name = "--local"
+short = "-l"
+description = "Only output packages installed in the local virtualenv"
+
+[[command.subcommands.flags]]
+name = "--all"
+description = "Include pip, setuptools, and wheel in the output"
+
+[[command.subcommands.flags]]
+name = "--exclude"
+description = "Exclude specified packages from output"
+
+[[command.subcommands.flags]]
+name = "--exclude-editable"
+description = "Exclude editable packages from output"
+
+[[command.subcommands]]
+name = "list"
+description = "List installed packages"
+
+[[command.subcommands.flags]]
+name = "--outdated"
+short = "-o"
+description = "List outdated packages"
+
+[[command.subcommands.flags]]
+name = "--uptodate"
+short = "-u"
+description = "List up-to-date packages"
+
+[[command.subcommands.flags]]
+name = "--format"
+description = "Select the output format (columns, freeze, json)"
+
+[[command.subcommands.flags]]
+name = "--editable"
+short = "-e"
+description = "List editable projects"
+
+[[command.subcommands.flags]]
+name = "--local"
+short = "-l"
+description = "Only list packages installed in the local virtualenv"
+
+[[command.subcommands]]
+name = "show"
+description = "Show information about installed packages"
+
+[[command.subcommands.flags]]
+name = "--files"
+short = "-f"
+description = "Show the full list of installed files"
+
+[[command.subcommands]]
+name = "search"
+description = "Search PyPI for packages"
+
+[[command.subcommands.flags]]
+name = "--index"
+short = "-i"
+description = "Base URL of the Python Package Index"
+
+[[command.subcommands]]
+name = "download"
+description = "Download packages without installing"
+
+[[command.subcommands.flags]]
+name = "--destination-directory"
+short = "-d"
+description = "Download packages to the specified directory"
+
+[[command.subcommands.flags]]
+name = "--requirement"
+short = "-r"
+description = "Download packages from the given requirements file"
+
+[[command.subcommands.flags]]
+name = "--no-deps"
+description = "Do not download package dependencies"
+
+[[command.subcommands.flags]]
+name = "--platform"
+description = "Only download wheels compatible with the given platform"
+
+[[command.subcommands.flags]]
+name = "--python-version"
+description = "Only download wheels compatible with the given Python version"
+
+[[command.subcommands]]
+name = "wheel"
+description = "Build wheels from requirements"
+
+[[command.subcommands.flags]]
+name = "--wheel-dir"
+short = "-w"
+description = "Build wheels into the specified directory"
+
+[[command.subcommands.flags]]
+name = "--requirement"
+short = "-r"
+description = "Build wheels from the given requirements file"
+
+[[command.subcommands.flags]]
+name = "--no-deps"
+description = "Do not build package dependencies"
+
+[[command.subcommands]]
+name = "check"
+description = "Verify installed packages have compatible dependencies"

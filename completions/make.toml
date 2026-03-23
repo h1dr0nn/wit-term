@@ -1,0 +1,107 @@
+[command]
+name = "make"
+description = "GNU make utility to maintain groups of programs"
+
+[[command.flags]]
+name = "-j"
+description = "Number of parallel jobs to run simultaneously"
+
+[[command.flags]]
+name = "-f"
+description = "Read FILE as the makefile"
+
+[[command.flags]]
+name = "-C"
+description = "Change to directory before reading makefiles"
+
+[[command.flags]]
+name = "-n"
+description = "Print the commands that would be executed, but do not execute them"
+
+[[command.flags]]
+name = "-B"
+description = "Unconditionally make all targets"
+
+[[command.flags]]
+name = "-k"
+description = "Continue as much as possible after an error"
+
+[[command.flags]]
+name = "-s"
+description = "Silent mode, do not echo commands"
+
+[[command.flags]]
+name = "-i"
+description = "Ignore errors from commands"
+
+[[command.flags]]
+name = "-d"
+description = "Print debugging information"
+
+[[command.flags]]
+name = "-e"
+description = "Give environment variables precedence over makefile variables"
+
+[[command.flags]]
+name = "-p"
+description = "Print the database of rules and variables"
+
+[[command.flags]]
+name = "-q"
+description = "Question mode: do not run any commands, exit 0 if up to date"
+
+[[command.flags]]
+name = "-r"
+description = "Disable built-in implicit rules"
+
+[[command.flags]]
+name = "-R"
+description = "Disable built-in variable settings"
+
+[[command.flags]]
+name = "-t"
+description = "Touch targets instead of building them"
+
+[[command.flags]]
+name = "-w"
+description = "Print the working directory before and after processing"
+
+[[command.flags]]
+name = "-W"
+description = "Pretend that the given file has been modified"
+
+[[command.flags]]
+name = "--help"
+description = "Print help information"
+
+[[command.flags]]
+name = "--version"
+description = "Print the version of make"
+
+[[command.flags]]
+name = "--jobs"
+description = "Number of parallel jobs (long form of -j)"
+
+[[command.flags]]
+name = "--file"
+description = "Read FILE as the makefile (long form of -f)"
+
+[[command.flags]]
+name = "--directory"
+description = "Change to directory (long form of -C)"
+
+[[command.flags]]
+name = "--dry-run"
+description = "Print commands without executing (long form of -n)"
+
+[[command.flags]]
+name = "--always-make"
+description = "Unconditionally make all targets (long form of -B)"
+
+[[command.flags]]
+name = "--keep-going"
+description = "Continue after errors (long form of -k)"
+
+[[command.flags]]
+name = "--silent"
+description = "Silent operation (long form of -s)"
