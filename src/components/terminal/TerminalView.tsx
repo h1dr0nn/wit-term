@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { TerminalGrid } from "./TerminalGrid";
 import { CompletionPopup } from "./CompletionPopup";
+import { SearchOverlay, type SearchOptions } from "./SearchOverlay";
 import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
 import { useCompletionStore, type CompletionItem } from "../../stores/completionStore";
 import { useSessionStore } from "../../stores/sessionStore";
@@ -37,6 +38,9 @@ export function TerminalView() {
   const [exitedSessions, setExitedSessions] = useState<Set<string>>(
     () => new Set(),
   );
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchMatches, setSearchMatches] = useState(0);
+  const [searchCurrent, setSearchCurrent] = useState(0);
   const cwdRef = useRef<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
   const updateGrid = useTerminalStore((s) => s.updateGrid);
@@ -121,6 +125,55 @@ export function TerminalView() {
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [sessionId]);
+
+  // Search handlers
+  const handleSearch = useCallback(
+    (query: string, _options: SearchOptions) => {
+      if (!snapshot || !query) {
+        setSearchMatches(0);
+        setSearchCurrent(0);
+        return;
+      }
+      // Simple text search across grid rows
+      let count = 0;
+      for (const row of snapshot.rows) {
+        const text = row.map((c) => c.content || " ").join("");
+        let pos = 0;
+        const lowerText = text.toLowerCase();
+        const lowerQuery = query.toLowerCase();
+        while (pos < lowerText.length) {
+          const idx = lowerText.indexOf(lowerQuery, pos);
+          if (idx === -1) break;
+          count++;
+          pos = idx + 1;
+        }
+      }
+      setSearchMatches(count);
+      setSearchCurrent(count > 0 ? 0 : -1);
+    },
+    [snapshot],
+  );
+
+  const handleSearchNext = useCallback(() => {
+    if (searchMatches > 0) {
+      setSearchCurrent((prev) => (prev + 1) % searchMatches);
+    }
+  }, [searchMatches]);
+
+  const handleSearchPrevious = useCallback(() => {
+    if (searchMatches > 0) {
+      setSearchCurrent(
+        (prev) => (prev - 1 + searchMatches) % searchMatches,
+      );
+    }
+  }, [searchMatches]);
+
+  const handleSearchClose = useCallback(() => {
+    setSearchVisible(false);
+    setSearchMatches(0);
+    setSearchCurrent(0);
+    containerRef.current?.focus();
+  }, []);
 
   // Request completions from backend
   const requestCompletions = useCallback(async () => {
@@ -237,6 +290,13 @@ export function TerminalView() {
         return;
       }
 
+      // Ctrl+Shift+F = search
+      if (e.ctrlKey && e.shiftKey && (e.key === "F" || e.key === "f")) {
+        e.preventDefault();
+        setSearchVisible((v) => !v);
+        return;
+      }
+
       // Clipboard: Ctrl+Shift+V = paste
       if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
         e.preventDefault();
@@ -314,6 +374,15 @@ export function TerminalView() {
         </div>
       )}
       <CompletionPopup />
+      <SearchOverlay
+        visible={searchVisible}
+        onClose={handleSearchClose}
+        onSearch={handleSearch}
+        matchCount={searchMatches}
+        currentMatch={searchCurrent}
+        onNext={handleSearchNext}
+        onPrevious={handleSearchPrevious}
+      />
       {exited && (
         <div className="text-[var(--ui-fg-muted)] text-sm p-2">[Process exited]</div>
       )}

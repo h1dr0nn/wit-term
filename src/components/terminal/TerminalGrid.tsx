@@ -142,21 +142,24 @@ function cellStyle(cell: CellData): React.CSSProperties {
 }
 
 function cursorStyle(shape: string): React.CSSProperties {
+  const cursorColor = "var(--term-cursor)";
+  const bgColor = "var(--term-bg)";
+
   const base: React.CSSProperties = {
-    backgroundColor: "#cdd6f4",
-    color: "#1e1e2e",
+    backgroundColor: cursorColor,
+    color: bgColor,
   };
 
   if (shape === "Underline") {
     return {
-      borderBottom: "2px solid #cdd6f4",
+      borderBottom: `2px solid ${cursorColor}`,
       backgroundColor: undefined,
       color: undefined,
     };
   }
   if (shape === "Bar") {
     return {
-      borderLeft: "2px solid #cdd6f4",
+      borderLeft: `2px solid ${cursorColor}`,
       backgroundColor: undefined,
       color: undefined,
     };
