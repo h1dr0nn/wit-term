@@ -1,0 +1,174 @@
+[command]
+name = "apt"
+description = "Advanced Package Tool for Debian/Ubuntu"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--version"
+short = "-v"
+description = "Print version information"
+
+[[command.flags]]
+name = "--yes"
+short = "-y"
+description = "Assume yes to prompts"
+
+[[command.flags]]
+name = "--no-install-recommends"
+description = "Do not install recommended packages"
+
+[[command.flags]]
+name = "--fix-broken"
+short = "-f"
+description = "Attempt to fix broken dependencies"
+
+[[command.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress output"
+
+[[command.flags]]
+name = "--simulate"
+short = "-s"
+description = "Simulate actions without making changes"
+
+[[command.flags]]
+name = "--dry-run"
+description = "Simulate actions (same as --simulate)"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "install"
+description = "Install packages"
+
+[[command.subcommands.flags]]
+name = "--no-install-recommends"
+description = "Do not install recommended packages"
+
+[[command.subcommands.flags]]
+name = "--reinstall"
+description = "Reinstall already installed packages"
+
+[[command.subcommands.flags]]
+name = "--fix-broken"
+short = "-f"
+description = "Fix broken dependencies"
+
+[[command.subcommands]]
+name = "remove"
+description = "Remove packages"
+
+[[command.subcommands.flags]]
+name = "--purge"
+description = "Also remove configuration files"
+
+[[command.subcommands.flags]]
+name = "--autoremove"
+description = "Remove unused dependencies"
+
+[[command.subcommands]]
+name = "purge"
+description = "Remove packages and their configuration"
+
+[[command.subcommands]]
+name = "update"
+description = "Update package index"
+
+[[command.subcommands]]
+name = "upgrade"
+description = "Upgrade installed packages"
+
+[[command.subcommands]]
+name = "full-upgrade"
+description = "Upgrade packages, removing obsolete if needed"
+aliases = ["dist-upgrade"]
+
+[[command.subcommands]]
+name = "autoremove"
+description = "Remove automatically installed unused packages"
+
+[[command.subcommands.flags]]
+name = "--purge"
+description = "Also remove config files"
+
+[[command.subcommands]]
+name = "search"
+description = "Search for packages"
+
+[[command.subcommands]]
+name = "show"
+description = "Show package details"
+
+[[command.subcommands.flags]]
+name = "--all-versions"
+short = "-a"
+description = "Show all versions"
+
+[[command.subcommands]]
+name = "list"
+description = "List packages"
+
+[[command.subcommands.flags]]
+name = "--installed"
+description = "List installed packages"
+
+[[command.subcommands.flags]]
+name = "--upgradable"
+description = "List upgradable packages"
+
+[[command.subcommands.flags]]
+name = "--all-versions"
+description = "List all versions"
+
+[[command.subcommands]]
+name = "depends"
+description = "Show package dependencies"
+
+[[command.subcommands]]
+name = "rdepends"
+description = "Show reverse dependencies"
+
+[[command.subcommands]]
+name = "policy"
+description = "Show package policy"
+
+[[command.subcommands]]
+name = "download"
+description = "Download package .deb files"
+
+[[command.subcommands]]
+name = "source"
+description = "Download source packages"
+
+[[command.subcommands]]
+name = "build-dep"
+description = "Install build dependencies for a source package"
+
+[[command.subcommands]]
+name = "changelog"
+description = "Show package changelog"
+
+[[command.subcommands]]
+name = "edit-sources"
+description = "Edit the sources.list file"
+
+[[command.subcommands]]
+name = "clean"
+description = "Clear the local repository of retrieved files"
+
+[[command.subcommands]]
+name = "autoclean"
+description = "Clear old retrieved files"
+
+[[command.subcommands]]
+name = "satisfy"
+description = "Satisfy dependency strings"
+
+[[command.subcommands]]
+name = "mark"
+description = "Mark/unmark packages as manually installed"

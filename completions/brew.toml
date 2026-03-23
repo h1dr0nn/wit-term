@@ -1,0 +1,245 @@
+[command]
+name = "brew"
+description = "Homebrew package manager for macOS/Linux"
+
+[[command.flags]]
+name = "--version"
+description = "Print Homebrew version"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--verbose"
+short = "-v"
+description = "Make output more verbose"
+
+[[command.flags]]
+name = "--debug"
+short = "-d"
+description = "Show debugging output"
+
+[[command.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress output"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "install"
+description = "Install a formula or cask"
+
+[[command.subcommands.flags]]
+name = "--cask"
+description = "Install a cask"
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force install"
+
+[[command.subcommands.flags]]
+name = "--quiet"
+short = "-q"
+description = "Suppress output"
+
+[[command.subcommands.flags]]
+name = "--HEAD"
+description = "Install HEAD version"
+
+[[command.subcommands.flags]]
+name = "--build-from-source"
+short = "-s"
+description = "Build from source"
+
+[[command.subcommands]]
+name = "uninstall"
+description = "Uninstall a formula or cask"
+aliases = ["remove", "rm"]
+
+[[command.subcommands.flags]]
+name = "--force"
+short = "-f"
+description = "Force uninstall"
+
+[[command.subcommands.flags]]
+name = "--zap"
+description = "Remove all files associated with a cask"
+
+[[command.subcommands]]
+name = "upgrade"
+description = "Upgrade outdated formulae and casks"
+
+[[command.subcommands.flags]]
+name = "--cask"
+description = "Upgrade only casks"
+
+[[command.subcommands.flags]]
+name = "--formula"
+description = "Upgrade only formulae"
+
+[[command.subcommands.flags]]
+name = "--greedy"
+description = "Include auto-updating casks"
+
+[[command.subcommands]]
+name = "update"
+description = "Fetch newest Homebrew and formulae"
+
+[[command.subcommands]]
+name = "search"
+description = "Search for formulae and casks"
+
+[[command.subcommands.flags]]
+name = "--cask"
+description = "Search casks only"
+
+[[command.subcommands.flags]]
+name = "--formula"
+description = "Search formulae only"
+
+[[command.subcommands]]
+name = "info"
+description = "Show info about a formula or cask"
+
+[[command.subcommands.flags]]
+name = "--json"
+description = "Output as JSON"
+
+[[command.subcommands.flags]]
+name = "--cask"
+description = "Show cask info"
+
+[[command.subcommands]]
+name = "list"
+description = "List installed formulae"
+aliases = ["ls"]
+
+[[command.subcommands.flags]]
+name = "--cask"
+description = "List casks"
+
+[[command.subcommands.flags]]
+name = "--formula"
+description = "List formulae"
+
+[[command.subcommands.flags]]
+name = "--versions"
+description = "Show versions"
+
+[[command.subcommands]]
+name = "outdated"
+description = "List outdated formulae and casks"
+
+[[command.subcommands.flags]]
+name = "--cask"
+description = "List outdated casks only"
+
+[[command.subcommands]]
+name = "cleanup"
+description = "Remove stale downloads and old versions"
+
+[[command.subcommands.flags]]
+name = "--prune"
+description = "Remove cache entries older than days"
+
+[[command.subcommands.flags]]
+name = "--dry-run"
+short = "-n"
+description = "Show what would be removed"
+
+[[command.subcommands]]
+name = "doctor"
+description = "Check your system for potential problems"
+aliases = ["dr"]
+
+[[command.subcommands]]
+name = "config"
+description = "Show Homebrew configuration"
+
+[[command.subcommands]]
+name = "deps"
+description = "Show dependencies for a formula"
+
+[[command.subcommands.flags]]
+name = "--tree"
+description = "Show dependency tree"
+
+[[command.subcommands.flags]]
+name = "--installed"
+description = "Show only installed dependencies"
+
+[[command.subcommands]]
+name = "uses"
+description = "Show formulae that depend on a formula"
+
+[[command.subcommands.flags]]
+name = "--installed"
+description = "Only list installed formulae"
+
+[[command.subcommands.flags]]
+name = "--recursive"
+description = "Show recursive dependents"
+
+[[command.subcommands]]
+name = "pin"
+description = "Pin a formula to prevent upgrades"
+
+[[command.subcommands]]
+name = "unpin"
+description = "Unpin a formula"
+
+[[command.subcommands]]
+name = "tap"
+description = "Add a tap (third-party repository)"
+
+[[command.subcommands]]
+name = "untap"
+description = "Remove a tap"
+
+[[command.subcommands]]
+name = "services"
+description = "Manage background services"
+
+[[command.subcommands]]
+name = "link"
+description = "Symlink a formula's installed files"
+
+[[command.subcommands.flags]]
+name = "--overwrite"
+description = "Overwrite existing files"
+
+[[command.subcommands]]
+name = "unlink"
+description = "Remove symlinks for a formula"
+
+[[command.subcommands]]
+name = "reinstall"
+description = "Uninstall and reinstall a formula or cask"
+
+[[command.subcommands]]
+name = "autoremove"
+description = "Remove unused dependencies"
+
+[[command.subcommands]]
+name = "leaves"
+description = "List formulae not depended on by others"
+
+[[command.subcommands]]
+name = "log"
+description = "Show git log for a formula or cask"
+
+[[command.subcommands]]
+name = "edit"
+description = "Open a formula or cask in an editor"
+
+[[command.subcommands]]
+name = "home"
+description = "Open a formula or cask homepage in a browser"
+
+[[command.subcommands]]
+name = "cat"
+description = "Display the source of a formula or cask"

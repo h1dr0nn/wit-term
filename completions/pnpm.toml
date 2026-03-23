@@ -1,0 +1,225 @@
+[command]
+name = "pnpm"
+description = "Fast, disk space efficient package manager"
+
+[[command.flags]]
+name = "--version"
+short = "-v"
+description = "Print the pnpm version"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--dir"
+short = "-C"
+description = "Change to directory before executing"
+
+[[command.flags]]
+name = "--recursive"
+short = "-r"
+description = "Run command recursively in all packages"
+
+[[command.flags]]
+name = "--filter"
+description = "Filter packages for recursive commands"
+
+[[command.flags]]
+name = "--workspace-root"
+short = "-w"
+description = "Run in the root of the workspace"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "add"
+description = "Install a package"
+
+[[command.subcommands.flags]]
+name = "--save-dev"
+short = "-D"
+description = "Save as a dev dependency"
+
+[[command.subcommands.flags]]
+name = "--save-peer"
+description = "Save as a peer dependency"
+
+[[command.subcommands.flags]]
+name = "--save-optional"
+short = "-O"
+description = "Save as optional dependency"
+
+[[command.subcommands.flags]]
+name = "--save-exact"
+short = "-E"
+description = "Install exact version"
+
+[[command.subcommands.flags]]
+name = "--global"
+short = "-g"
+description = "Install globally"
+
+[[command.subcommands.flags]]
+name = "--workspace"
+short = "-w"
+description = "Install in workspace root"
+
+[[command.subcommands]]
+name = "install"
+description = "Install all dependencies"
+aliases = ["i"]
+
+[[command.subcommands.flags]]
+name = "--frozen-lockfile"
+description = "Don't generate a lockfile"
+
+[[command.subcommands.flags]]
+name = "--no-optional"
+description = "Skip optional dependencies"
+
+[[command.subcommands.flags]]
+name = "--prod"
+short = "-P"
+description = "Install only production dependencies"
+
+[[command.subcommands]]
+name = "remove"
+description = "Remove packages"
+aliases = ["rm", "uninstall", "un"]
+
+[[command.subcommands]]
+name = "update"
+description = "Update packages"
+aliases = ["up", "upgrade"]
+
+[[command.subcommands.flags]]
+name = "--latest"
+short = "-L"
+description = "Update to the latest version"
+
+[[command.subcommands.flags]]
+name = "--interactive"
+short = "-i"
+description = "Show outdated packages and choose which to update"
+
+[[command.subcommands]]
+name = "run"
+description = "Run a script from package.json"
+
+[[command.subcommands.flags]]
+name = "--recursive"
+short = "-r"
+description = "Run in all packages"
+
+[[command.subcommands.flags]]
+name = "--parallel"
+description = "Run scripts in parallel"
+
+[[command.subcommands.flags]]
+name = "--if-present"
+description = "Don't fail if script is missing"
+
+[[command.subcommands]]
+name = "exec"
+description = "Execute a shell command in scope"
+
+[[command.subcommands]]
+name = "dlx"
+description = "Fetch and run a package"
+
+[[command.subcommands]]
+name = "create"
+description = "Create a project from a create-* starter kit"
+
+[[command.subcommands]]
+name = "test"
+description = "Run tests"
+aliases = ["t"]
+
+[[command.subcommands]]
+name = "build"
+description = "Run the build script"
+
+[[command.subcommands]]
+name = "start"
+description = "Run the start script"
+
+[[command.subcommands]]
+name = "init"
+description = "Initialize a new package"
+
+[[command.subcommands]]
+name = "publish"
+description = "Publish package to registry"
+
+[[command.subcommands.flags]]
+name = "--tag"
+description = "Publish with a specific dist-tag"
+
+[[command.subcommands.flags]]
+name = "--access"
+description = "Set access level (public|restricted)"
+
+[[command.subcommands.flags]]
+name = "--no-git-checks"
+description = "Skip Git checks"
+
+[[command.subcommands]]
+name = "list"
+description = "List installed packages"
+aliases = ["ls"]
+
+[[command.subcommands.flags]]
+name = "--depth"
+description = "Max display depth"
+
+[[command.subcommands.flags]]
+name = "--json"
+description = "Output as JSON"
+
+[[command.subcommands]]
+name = "outdated"
+description = "Check for outdated packages"
+
+[[command.subcommands]]
+name = "why"
+description = "Show why a package is installed"
+
+[[command.subcommands]]
+name = "store"
+description = "Manage the content-addressable store"
+
+[[command.subcommands]]
+name = "link"
+description = "Link a local package"
+
+[[command.subcommands]]
+name = "unlink"
+description = "Unlink a local package"
+
+[[command.subcommands]]
+name = "rebuild"
+description = "Rebuild packages"
+aliases = ["rb"]
+
+[[command.subcommands]]
+name = "prune"
+description = "Remove extraneous packages"
+
+[[command.subcommands]]
+name = "fetch"
+description = "Fetch packages to the virtual store"
+
+[[command.subcommands]]
+name = "patch"
+description = "Prepare a package for patching"
+
+[[command.subcommands]]
+name = "patch-commit"
+description = "Commit a patched package"
+
+[[command.subcommands]]
+name = "deploy"
+description = "Deploy a package from a workspace"

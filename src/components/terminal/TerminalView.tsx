@@ -4,7 +4,8 @@ import { listen } from "@tauri-apps/api/event";
 import { TerminalGrid } from "./TerminalGrid";
 import { CompletionPopup } from "./CompletionPopup";
 import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
-import { useCompletionStore } from "../../stores/completionStore";
+import { useCompletionStore, type CompletionItem } from "../../stores/completionStore";
+import { useInputBuffer } from "../../hooks/useInputBuffer";
 import { encodeKey } from "../../utils/keyEncoder";
 
 interface GridUpdatePayload {
@@ -31,10 +32,13 @@ export function TerminalView() {
   const grids = useTerminalStore((s) => s.grids);
 
   const completionVisible = useCompletionStore((s) => s.visible);
+  const completionShow = useCompletionStore((s) => s.show);
   const completionHide = useCompletionStore((s) => s.hide);
   const completionSelectNext = useCompletionStore((s) => s.selectNext);
   const completionSelectPrevious = useCompletionStore((s) => s.selectPrevious);
   const completionGetSelected = useCompletionStore((s) => s.getSelected);
+
+  const { append, reset, getBuffer, getCursor, insertCompletion } = useInputBuffer();
 
   const snapshot = sessionId ? grids.get(sessionId) : undefined;
 
@@ -77,6 +81,8 @@ export function TerminalView() {
     const unlistenCwd = listen<CwdChangedPayload>("cwd_changed", (event) => {
       if (event.payload.session_id === sessionId) {
         cwdRef.current = event.payload.cwd;
+        // CWD change means new prompt — reset input buffer
+        reset();
       }
     });
 
@@ -85,7 +91,7 @@ export function TerminalView() {
       unlistenExit.then((fn) => fn());
       unlistenCwd.then((fn) => fn());
     };
-  }, [sessionId, updateGrid]);
+  }, [sessionId, updateGrid, reset]);
 
   // Handle resize
   useEffect(() => {
@@ -108,6 +114,35 @@ export function TerminalView() {
     return () => observer.disconnect();
   }, [sessionId]);
 
+  // Request completions from backend
+  const requestCompletions = useCallback(async () => {
+    const input = getBuffer();
+    const cursorPos = getCursor();
+    const cwd = cwdRef.current;
+
+    if (!input.trim()) return;
+
+    try {
+      const items = await invoke<CompletionItem[]>("request_completions", {
+        input,
+        cursorPos,
+        cwd,
+      });
+
+      if (items.length === 1) {
+        // Single match: auto-insert directly
+        const data = insertCompletion(items[0].text);
+        if (sessionId && data) {
+          await invoke("send_input", { sessionId, data });
+        }
+      } else if (items.length > 1) {
+        completionShow(items);
+      }
+    } catch {
+      // Completion request failed — ignore silently
+    }
+  }, [getBuffer, getCursor, insertCompletion, sessionId, completionShow]);
+
   // Handle keyboard input
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -129,8 +164,10 @@ export function TerminalView() {
           e.preventDefault();
           const selected = completionGetSelected();
           if (selected) {
-            // Send the completion text to the terminal
-            invoke("send_input", { sessionId, data: selected.text }).catch(() => {});
+            const data = insertCompletion(selected.text);
+            if (data) {
+              invoke("send_input", { sessionId, data }).catch(() => {});
+            }
           }
           completionHide();
           return;
@@ -142,6 +179,13 @@ export function TerminalView() {
         }
       }
 
+      // Tab key (when popup not visible) → trigger completions
+      if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        requestCompletions();
+        return;
+      }
+
       // Clipboard: Ctrl+Shift+V = paste
       if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
         e.preventDefault();
@@ -149,6 +193,7 @@ export function TerminalView() {
           .readText()
           .then((text) => {
             if (text) {
+              append(text);
               invoke("send_input", { sessionId, data: text }).catch(() => {});
             }
           })
@@ -170,6 +215,8 @@ export function TerminalView() {
 
       const data = encodeKey(e);
       if (data) {
+        // Track in input buffer
+        append(data);
         invoke("send_input", { sessionId, data }).catch((err) => {
           console.error("Failed to send input:", err);
         });
@@ -183,6 +230,9 @@ export function TerminalView() {
       completionSelectPrevious,
       completionGetSelected,
       completionHide,
+      requestCompletions,
+      insertCompletion,
+      append,
     ],
   );
 

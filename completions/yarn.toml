@@ -1,0 +1,187 @@
+[command]
+name = "yarn"
+description = "Yarn package manager"
+
+[[command.flags]]
+name = "--version"
+short = "-v"
+description = "Print the Yarn version"
+
+[[command.flags]]
+name = "--help"
+short = "-h"
+description = "Print help information"
+
+[[command.flags]]
+name = "--cwd"
+description = "Set the working directory"
+
+[[command.flags]]
+name = "--frozen-lockfile"
+description = "Do not generate a lockfile"
+
+[[command.flags]]
+name = "--no-progress"
+description = "Disable progress bar"
+
+[[command.flags]]
+name = "--json"
+description = "Output results as JSON"
+
+[[command.flags]]
+name = "--verbose"
+description = "Enable verbose output"
+
+# --- Subcommands ---
+
+[[command.subcommands]]
+name = "add"
+description = "Add a dependency"
+
+[[command.subcommands.flags]]
+name = "--dev"
+short = "-D"
+description = "Add as a dev dependency"
+
+[[command.subcommands.flags]]
+name = "--peer"
+short = "-P"
+description = "Add as a peer dependency"
+
+[[command.subcommands.flags]]
+name = "--optional"
+short = "-O"
+description = "Add as an optional dependency"
+
+[[command.subcommands.flags]]
+name = "--exact"
+short = "-E"
+description = "Install exact version"
+
+[[command.subcommands]]
+name = "remove"
+description = "Remove a dependency"
+aliases = ["rm"]
+
+[[command.subcommands]]
+name = "install"
+description = "Install all dependencies"
+
+[[command.subcommands.flags]]
+name = "--frozen-lockfile"
+description = "Ensure lockfile is not updated"
+
+[[command.subcommands.flags]]
+name = "--check-files"
+description = "Verify already installed files"
+
+[[command.subcommands]]
+name = "run"
+description = "Run a script defined in package.json"
+
+[[command.subcommands]]
+name = "workspace"
+description = "Run a command in a workspace"
+
+[[command.subcommands]]
+name = "workspaces"
+description = "Manage workspaces"
+
+[[command.subcommands]]
+name = "init"
+description = "Initialize a new package"
+
+[[command.subcommands.flags]]
+name = "--yes"
+short = "-y"
+description = "Skip prompts and use defaults"
+
+[[command.subcommands]]
+name = "link"
+description = "Symlink a local package"
+
+[[command.subcommands]]
+name = "unlink"
+description = "Unlink a symlinked package"
+
+[[command.subcommands]]
+name = "upgrade"
+description = "Upgrade packages"
+
+[[command.subcommands.flags]]
+name = "--latest"
+short = "-L"
+description = "Upgrade to latest version"
+
+[[command.subcommands]]
+name = "upgrade-interactive"
+description = "Interactive upgrade wizard"
+
+[[command.subcommands]]
+name = "why"
+description = "Show why a package is installed"
+
+[[command.subcommands]]
+name = "info"
+description = "Show info about a package"
+
+[[command.subcommands]]
+name = "list"
+description = "List installed packages"
+
+[[command.subcommands.flags]]
+name = "--depth"
+description = "Limit the depth of the tree"
+
+[[command.subcommands]]
+name = "outdated"
+description = "Check for outdated packages"
+
+[[command.subcommands]]
+name = "cache"
+description = "Manage the global cache"
+
+[[command.subcommands]]
+name = "global"
+description = "Manage global packages"
+
+[[command.subcommands]]
+name = "test"
+description = "Run tests"
+aliases = ["t"]
+
+[[command.subcommands]]
+name = "build"
+description = "Run the build script"
+
+[[command.subcommands]]
+name = "start"
+description = "Run the start script"
+
+[[command.subcommands]]
+name = "publish"
+description = "Publish package to registry"
+
+[[command.subcommands.flags]]
+name = "--tag"
+description = "Publish with a specific dist-tag"
+
+[[command.subcommands.flags]]
+name = "--access"
+description = "Set package access level (public|restricted)"
+
+[[command.subcommands]]
+name = "pack"
+description = "Create a tarball from the package"
+
+[[command.subcommands]]
+name = "dlx"
+description = "Run a package without installing it"
+
+[[command.subcommands]]
+name = "set"
+description = "Set a config value"
+
+[[command.subcommands]]
+name = "config"
+description = "Manage configuration"

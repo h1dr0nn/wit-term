@@ -3,6 +3,7 @@
 //! Provides context-aware tab completions from multiple sources:
 //! static TOML definitions, filesystem paths, and fuzzy matching.
 
+mod context_source;
 mod fuzzy;
 mod parser;
 mod path_source;
@@ -61,6 +62,9 @@ impl CompletionEngine {
 
         // Path completion source
         sources.push(Box::new(path_source::PathSource));
+
+        // Dynamic context-aware completions (git branches, npm scripts, etc.)
+        sources.push(Box::new(context_source::ContextSource));
 
         Self { sources }
     }
