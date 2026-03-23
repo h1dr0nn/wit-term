@@ -5,6 +5,7 @@ import { TerminalGrid } from "./TerminalGrid";
 import { CompletionPopup } from "./CompletionPopup";
 import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
 import { useCompletionStore, type CompletionItem } from "../../stores/completionStore";
+import { useSessionStore } from "../../stores/sessionStore";
 import { useInputBuffer } from "../../hooks/useInputBuffer";
 import { encodeKey } from "../../utils/keyEncoder";
 
@@ -23,9 +24,19 @@ interface CwdChangedPayload {
   cwd: string;
 }
 
+interface TitleChangedPayload {
+  session_id: string;
+  title: string;
+}
+
 export function TerminalView() {
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [exited, setExited] = useState(false);
+  const sessionId = useSessionStore((s) => s.activeSessionId);
+  const updateSessionTitle = useSessionStore((s) => s.updateSessionTitle);
+  const updateSessionCwd = useSessionStore((s) => s.updateSessionCwd);
+
+  const [exitedSessions, setExitedSessions] = useState<Set<string>>(
+    () => new Set(),
+  );
   const cwdRef = useRef<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
   const updateGrid = useTerminalStore((s) => s.updateGrid);
@@ -38,60 +49,57 @@ export function TerminalView() {
   const completionSelectPrevious = useCompletionStore((s) => s.selectPrevious);
   const completionGetSelected = useCompletionStore((s) => s.getSelected);
 
-  const { append, reset, getBuffer, getCursor, insertCompletion } = useInputBuffer();
+  const { append, reset, getBuffer, getCursor, insertCompletion } =
+    useInputBuffer();
 
   const snapshot = sessionId ? grids.get(sessionId) : undefined;
+  const exited = sessionId ? exitedSessions.has(sessionId) : false;
 
-  // Create session on mount
+  // Focus container when active session changes
   useEffect(() => {
-    let cancelled = false;
+    if (sessionId) {
+      containerRef.current?.focus();
+      completionHide();
+      reset();
+    }
+  }, [sessionId, completionHide, reset]);
 
-    invoke<string>("create_session")
-      .then((id) => {
-        if (!cancelled) {
-          setSessionId(id);
-          containerRef.current?.focus();
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to create session:", err);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Listen for events
+  // Listen for events (all sessions)
   useEffect(() => {
-    if (!sessionId) return;
-
-    const unlisten = listen<GridUpdatePayload>("grid_update", (event) => {
-      if (event.payload.session_id === sessionId) {
-        updateGrid(sessionId, event.payload.snapshot);
-      }
+    const unlisten1 = listen<GridUpdatePayload>("grid_update", (event) => {
+      updateGrid(event.payload.session_id, event.payload.snapshot);
     });
 
-    const unlistenExit = listen<SessionExitedPayload>("session_exited", (event) => {
-      if (event.payload.session_id === sessionId) {
-        setExited(true);
-      }
-    });
+    const unlisten2 = listen<SessionExitedPayload>(
+      "session_exited",
+      (event) => {
+        setExitedSessions((prev) => new Set(prev).add(event.payload.session_id));
+      },
+    );
 
-    const unlistenCwd = listen<CwdChangedPayload>("cwd_changed", (event) => {
+    const unlisten3 = listen<CwdChangedPayload>("cwd_changed", (event) => {
+      updateSessionCwd(event.payload.session_id, event.payload.cwd);
+      // Update local ref if this is the active session
       if (event.payload.session_id === sessionId) {
         cwdRef.current = event.payload.cwd;
-        // CWD change means new prompt — reset input buffer
         reset();
       }
     });
 
+    const unlisten4 = listen<TitleChangedPayload>(
+      "title_changed",
+      (event) => {
+        updateSessionTitle(event.payload.session_id, event.payload.title);
+      },
+    );
+
     return () => {
-      unlisten.then((fn) => fn());
-      unlistenExit.then((fn) => fn());
-      unlistenCwd.then((fn) => fn());
+      unlisten1.then((fn) => fn());
+      unlisten2.then((fn) => fn());
+      unlisten3.then((fn) => fn());
+      unlisten4.then((fn) => fn());
     };
-  }, [sessionId, updateGrid, reset]);
+  }, [updateGrid, updateSessionCwd, updateSessionTitle, sessionId, reset]);
 
   // Handle resize
   useEffect(() => {
@@ -130,7 +138,6 @@ export function TerminalView() {
       });
 
       if (items.length === 1) {
-        // Single match: auto-insert directly
         const data = insertCompletion(items[0].text);
         if (sessionId && data) {
           await invoke("send_input", { sessionId, data });
@@ -139,7 +146,7 @@ export function TerminalView() {
         completionShow(items);
       }
     } catch {
-      // Completion request failed — ignore silently
+      // Completion request failed
     }
   }, [getBuffer, getCursor, insertCompletion, sessionId, completionShow]);
 
@@ -147,6 +154,44 @@ export function TerminalView() {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!sessionId || exited) return;
+
+      // Global shortcuts (work regardless of completion state)
+      const sessions = useSessionStore.getState().sessions;
+
+      // Ctrl+T = new tab
+      if (e.ctrlKey && !e.shiftKey && (e.key === "t" || e.key === "T")) {
+        e.preventDefault();
+        useSessionStore.getState().createNewSession();
+        return;
+      }
+
+      // Ctrl+W = close tab
+      if (e.ctrlKey && !e.shiftKey && (e.key === "w" || e.key === "W")) {
+        e.preventDefault();
+        useSessionStore.getState().closeSession(sessionId);
+        return;
+      }
+
+      // Ctrl+Tab / Ctrl+Shift+Tab = switch tabs
+      if (e.ctrlKey && e.key === "Tab") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          useSessionStore.getState().switchToPrevious();
+        } else {
+          useSessionStore.getState().switchToNext();
+        }
+        return;
+      }
+
+      // Ctrl+1-9 = switch to tab by index
+      if (e.ctrlKey && !e.shiftKey && e.key >= "1" && e.key <= "9") {
+        const idx = parseInt(e.key) - 1;
+        if (idx < sessions.length) {
+          e.preventDefault();
+          useSessionStore.getState().switchToIndex(idx);
+          return;
+        }
+      }
 
       // Completion popup keyboard handling
       if (completionVisible) {
@@ -179,8 +224,14 @@ export function TerminalView() {
         }
       }
 
-      // Tab key (when popup not visible) → trigger completions
-      if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // Tab key (when popup not visible) -> trigger completions
+      if (
+        e.key === "Tab" &&
+        !e.shiftKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey
+      ) {
         e.preventDefault();
         requestCompletions();
         return;
@@ -215,7 +266,6 @@ export function TerminalView() {
 
       const data = encodeKey(e);
       if (data) {
-        // Track in input buffer
         append(data);
         invoke("send_input", { sessionId, data }).catch((err) => {
           console.error("Failed to send input:", err);
@@ -240,6 +290,14 @@ export function TerminalView() {
     containerRef.current?.focus();
   }, []);
 
+  if (!sessionId) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-[#6c7086] text-sm">
+        No active session. Press Ctrl+T to create one.
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -252,7 +310,7 @@ export function TerminalView() {
         <TerminalGrid snapshot={snapshot} />
       ) : (
         <div className="flex-1 flex items-center justify-center text-[#a6adc8] text-sm">
-          {sessionId ? "Loading..." : "Connecting..."}
+          Loading...
         </div>
       )}
       <CompletionPopup />
