@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use tauri::{AppHandle, Manager};
+
 use crate::config::{self, AppConfig, Theme};
 
 #[tauri::command]
@@ -13,9 +15,6 @@ pub fn get_config() -> AppConfig {
 pub fn set_config(config: AppConfig) -> Result<(), String> {
     config.save()
 }
-
-use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager};
 
 fn resolve_themes_dir(handle: &AppHandle) -> PathBuf {
     // 1. Try resource directory (bundled)
