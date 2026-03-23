@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useRef, useCallback, useEffect, useState } from "react";
 import type { CellData, GridSnapshot } from "../../stores/terminalStore";
 import { colorToCss } from "../../utils/colors";
 
@@ -6,19 +6,85 @@ interface TerminalGridProps {
   snapshot: GridSnapshot;
 }
 
+const ROW_HEIGHT = 16.8; // 14px * 1.2 line-height
+
 export function TerminalGrid({ snapshot }: TerminalGridProps) {
-  return (
-    <div className="font-mono text-sm leading-[1.2] whitespace-pre">
-      {snapshot.rows.map((row, rowIdx) => (
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+
+  // Track viewport size
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setViewportHeight(entry.contentRect.height);
+      }
+    });
+
+    observer.observe(container);
+    setViewportHeight(container.clientHeight);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+
+  // Virtual scrolling: only render visible rows
+  const totalHeight = snapshot.rows.length * ROW_HEIGHT;
+  const startRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2);
+  const endRow = Math.min(
+    snapshot.rows.length,
+    Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + 2,
+  );
+
+  // Memoize visible rows
+  const visibleRows = useMemo(() => {
+    const rows = [];
+    for (let i = startRow; i < endRow; i++) {
+      rows.push(
         <TerminalRow
-          key={rowIdx}
-          cells={row}
-          rowIdx={rowIdx}
+          key={i}
+          cells={snapshot.rows[i]}
+          rowIdx={i}
           cursorCol={snapshot.cursor_col}
-          showCursor={snapshot.cursor_visible && rowIdx === snapshot.cursor_row}
+          showCursor={snapshot.cursor_visible && i === snapshot.cursor_row}
           cursorShape={snapshot.cursor_shape}
-        />
-      ))}
+          top={i * ROW_HEIGHT}
+        />,
+      );
+    }
+    return rows;
+  }, [snapshot, startRow, endRow]);
+
+  // Auto-scroll to cursor
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const cursorY = snapshot.cursor_row * ROW_HEIGHT;
+    const viewBottom = container.scrollTop + container.clientHeight;
+
+    if (cursorY + ROW_HEIGHT > viewBottom) {
+      container.scrollTop = cursorY + ROW_HEIGHT - container.clientHeight;
+    } else if (cursorY < container.scrollTop) {
+      container.scrollTop = cursorY;
+    }
+  }, [snapshot.cursor_row]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex-1 overflow-auto font-mono text-sm leading-[1.2] whitespace-pre"
+      onScroll={handleScroll}
+    >
+      <div style={{ height: totalHeight, position: "relative" }}>
+        {visibleRows}
+      </div>
     </div>
   );
 }
@@ -29,6 +95,7 @@ interface TerminalRowProps {
   cursorCol: number;
   showCursor: boolean;
   cursorShape: string;
+  top: number;
 }
 
 const TerminalRow = React.memo(function TerminalRow({
@@ -36,27 +103,39 @@ const TerminalRow = React.memo(function TerminalRow({
   cursorCol,
   showCursor,
   cursorShape,
+  top,
 }: TerminalRowProps) {
   // Group consecutive cells with the same attributes into spans
-  const spans: { cells: CellData[]; startCol: number }[] = [];
-  let currentSpan: CellData[] = [];
-  let spanStart = 0;
+  const spans = useMemo(() => {
+    const result: { cells: CellData[]; startCol: number }[] = [];
+    let currentSpan: CellData[] = [];
+    let spanStart = 0;
 
-  for (let i = 0; i < cells.length; i++) {
-    const cell = cells[i];
-    if (currentSpan.length > 0 && !sameStyle(currentSpan[0], cell)) {
-      spans.push({ cells: currentSpan, startCol: spanStart });
-      currentSpan = [];
-      spanStart = i;
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (currentSpan.length > 0 && !sameStyle(currentSpan[0], cell)) {
+        result.push({ cells: currentSpan, startCol: spanStart });
+        currentSpan = [];
+        spanStart = i;
+      }
+      currentSpan.push(cell);
     }
-    currentSpan.push(cell);
-  }
-  if (currentSpan.length > 0) {
-    spans.push({ cells: currentSpan, startCol: spanStart });
-  }
+    if (currentSpan.length > 0) {
+      result.push({ cells: currentSpan, startCol: spanStart });
+    }
+    return result;
+  }, [cells]);
 
   return (
-    <div className="h-[1.2em]">
+    <div
+      style={{
+        position: "absolute",
+        top,
+        left: 0,
+        right: 0,
+        height: ROW_HEIGHT,
+      }}
+    >
       {spans.map((span, idx) => {
         const style = cellStyle(span.cells[0]);
         const text = span.cells.map((c) => c.content || " ").join("");
@@ -65,7 +144,6 @@ const TerminalRow = React.memo(function TerminalRow({
         if (showCursor) {
           const cursorOffset = cursorCol - span.startCol;
           if (cursorOffset >= 0 && cursorOffset < span.cells.length) {
-            // Split the span around the cursor
             const before = text.slice(0, cursorOffset);
             const cursorChar = text[cursorOffset] || " ";
             const after = text.slice(cursorOffset + 1);
@@ -73,7 +151,7 @@ const TerminalRow = React.memo(function TerminalRow({
             return (
               <React.Fragment key={idx}>
                 {before && <span style={style}>{before}</span>}
-                <span style={cursorStyle(cursorShape)} data-cursor="true">
+                <span style={cursorStyleFn(cursorShape)} data-cursor="true">
                   {cursorChar}
                 </span>
                 {after && <span style={style}>{after}</span>}
@@ -105,10 +183,7 @@ function sameStyle(a: CellData, b: CellData): boolean {
   );
 }
 
-function colorEqual(
-  a: CellData["fg"],
-  b: CellData["fg"],
-): boolean {
+function colorEqual(a: CellData["fg"], b: CellData["fg"]): boolean {
   if (a.type !== b.type) return false;
   if (a.type === "Default") return true;
   if (a.type === "Named" && b.type === "Named") return a.name === b.name;
@@ -141,29 +216,23 @@ function cellStyle(cell: CellData): React.CSSProperties {
   return style;
 }
 
-function cursorStyle(shape: string): React.CSSProperties {
+function cursorStyleFn(shape: string): React.CSSProperties {
   const cursorColor = "var(--term-cursor)";
   const bgColor = "var(--term-bg)";
-
-  const base: React.CSSProperties = {
-    backgroundColor: cursorColor,
-    color: bgColor,
-  };
 
   if (shape === "Underline") {
     return {
       borderBottom: `2px solid ${cursorColor}`,
-      backgroundColor: undefined,
-      color: undefined,
     };
   }
   if (shape === "Bar") {
     return {
       borderLeft: `2px solid ${cursorColor}`,
-      backgroundColor: undefined,
-      color: undefined,
     };
   }
 
-  return base; // Block
+  return {
+    backgroundColor: cursorColor,
+    color: bgColor,
+  };
 }
