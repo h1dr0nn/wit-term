@@ -1,8 +1,10 @@
+pub mod agent;
 pub mod commands;
 pub mod completion;
 pub mod config;
 pub mod context;
 pub mod parser;
+pub mod persistence;
 pub mod plugin;
 pub mod pty;
 pub mod session;
@@ -48,6 +50,7 @@ pub fn run() {
             commands::session::destroy_session,
             commands::session::list_sessions,
             commands::session::send_input,
+            commands::session::submit_command,
             commands::session::resize_session,
             commands::session::get_snapshot,
             commands::session::get_session_grid,
@@ -59,6 +62,8 @@ pub fn run() {
             commands::config::set_config,
             commands::config::list_themes,
             commands::config::get_theme,
+            commands::session::save_session_state,
+            commands::session::load_session_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
