@@ -46,6 +46,9 @@ Detailed technical specifications for each subsystem.
 | [completion-data-format.md](03-specifications/completion-data-format.md) | Schema and format for completion data |
 | [session-management.md](03-specifications/session-management.md) | Multi-session management |
 | [shell-integration.md](03-specifications/shell-integration.md) | Shell integration - bash, zsh, fish, PowerShell |
+| [agent-detection.md](03-specifications/agent-detection.md) | Agent detection engine - 4-layer progressive detection |
+| [agent-adapters.md](03-specifications/agent-adapters.md) | Agent adapter system - per-agent output parsing |
+| [wit-protocol.md](03-specifications/wit-protocol.md) | Wit Protocol - two-way agent communication |
 
 ### 04 - UI/UX
 
@@ -56,7 +59,8 @@ User interface and user experience design.
 | [design-system.md](04-ui-ux/design-system.md) | Design tokens, spacing, typography, components |
 | [terminal-view.md](04-ui-ux/terminal-view.md) | Terminal rendering view - grid, cursor, selection |
 | [sidebar-left.md](04-ui-ux/sidebar-left.md) | Session management sidebar |
-| [sidebar-right.md](04-ui-ux/sidebar-right.md) | Context info / config sidebar |
+| [sidebar-right.md](04-ui-ux/sidebar-right.md) | Agent sidebar - AI agent monitoring dashboard |
+| [agent-dashboard.md](04-ui-ux/agent-dashboard.md) | Agent dashboard components - timeline, files, conversation |
 | [completion-popup.md](04-ui-ux/completion-popup.md) | Autocomplete dropdown UI |
 | [header.md](04-ui-ux/header.md) | Header / title bar layout and behavior |
 | [window-decoration.md](04-ui-ux/window-decoration.md) | Custom window chrome, menus, transparency, controls |
@@ -75,6 +79,7 @@ Development roadmap, phases, and milestones.
 | [phase-3-polish.md](05-roadmap/phase-3-polish.md) | Phase 3: Polish - UI, themes, sessions, UX |
 | [phase-4-ecosystem.md](05-roadmap/phase-4-ecosystem.md) | Phase 4: Ecosystem - plugins, community, packaging |
 | [milestones.md](05-roadmap/milestones.md) | Milestone definitions and acceptance criteria |
+| [agent-detection-milestones.md](05-roadmap/agent-detection-milestones.md) | Agent detection feature milestones |
 
 ### 06 - Development
 

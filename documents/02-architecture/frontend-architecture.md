@@ -43,6 +43,11 @@ the UI, collects user input and sends it back to Rust.
 │   │   │   └── <Tab> ×N
 │   │   └── <TerminalContainer>
 │   │       ├── <TerminalView>      # Terminal rendering
+│   │       │   ├── <BlocksView>       # Warp-style command blocks
+│   │       │   │   └── <CapturedOutputBlock> ×N
+│   │       │   │       ├── Block header (command, CWD, branch, duration)
+│   │       │   │       └── <AnsiOutput>   # Renders ANSI-colored text
+│   │       │   ├── <InputBar>         # Command input with CWD display
 │   │       │   ├── <TerminalGrid>
 │   │       │   │   └── <TerminalRow> ×rows
 │   │       │   ├── <Cursor>
@@ -110,10 +115,30 @@ interface TerminalState {
   cursors: Map<string, CursorData>;
   scrollOffsets: Map<string, number>;
 
+  // Command capture blocks (Warp-style block mode)
+  capturedBlocks: Map<string, CapturedBlock[]>;  // sessionId -> blocks
+
   // Actions
   updateGrid: (sessionId: string, changes: CellChange[]) => void;
   updateCursor: (sessionId: string, cursor: CursorData) => void;
   setScrollOffset: (sessionId: string, offset: number) => void;
+
+  // Command capture actions
+  addCapturedBlock: (sessionId: string, block: CapturedBlock) => void;
+  updateOutputChunk: (commandId: string, output: string) => void;
+  finalizeOutput: (commandId: string, output: string, durationMs: number) => void;
+}
+
+// CapturedBlock replaces the older FrontendBlock concept
+interface CapturedBlock {
+  id: string;           // commandId (UUID)
+  command: string;      // the command text
+  cwd: string;          // working directory at submission
+  gitBranch?: string;   // git branch at submission
+  submittedAt: number;  // timestamp
+  outputText: string;   // accumulated output (plain text with ANSI codes)
+  lastChunkAt?: number; // timestamp of last chunk received
+  durationMs?: number;  // total execution time (set on finalize)
 }
 ```
 
@@ -270,6 +295,19 @@ function renderRow(cells: TerminalCell[]): React.ReactNode {
 }
 ```
 
+### ANSI Output Rendering (Block Mode)
+
+The `AnsiOutput` component (using `src/utils/ansiParser.ts`) renders plain text containing ANSI SGR escape codes as styled HTML. This is used by `CapturedOutputBlock` in the `BlocksView` to display command output with colors.
+
+```typescript
+// utils/ansiParser.ts
+// Parses ANSI SGR sequences (e.g., \x1b[31m for red, \x1b[1m for bold)
+// and produces an array of segments with text and style information.
+// The AnsiOutput React component maps these segments to <span> elements.
+```
+
+This replaces the older grid-row-slicing approach (FlatBlock) with a simpler text-based rendering pipeline: Rust captures the output as text with ANSI codes via `grid_to_ansi_text()`, and the frontend parses those codes for display.
+
 ---
 
 ## Input Handling
@@ -379,6 +417,42 @@ function useTerminalEvents(sessionId: string) {
     );
 
     return () => { unlisten.then((fn) => fn()); };
+  }, [sessionId]);
+}
+
+// hooks/useCommandCapture.ts
+function useCommandCaptureEvents(sessionId: string) {
+  const updateOutputChunk = useTerminalStore((s) => s.updateOutputChunk);
+  const finalizeOutput = useTerminalStore((s) => s.finalizeOutput);
+
+  useEffect(() => {
+    const unlisteners: Promise<UnlistenFn>[] = [];
+
+    // Incremental output chunks during command execution
+    unlisteners.push(
+      listen<CommandOutputChunk>(
+        `command_output_chunk`,
+        (event) => {
+          const { command_id, output } = event.payload;
+          updateOutputChunk(command_id, output);
+        }
+      )
+    );
+
+    // Final output when command completes
+    unlisteners.push(
+      listen<CommandOutput>(
+        `command_output`,
+        (event) => {
+          const { command_id, output, duration_ms } = event.payload;
+          finalizeOutput(command_id, output, duration_ms);
+        }
+      )
+    );
+
+    return () => {
+      unlisteners.forEach((p) => p.then((fn) => fn()));
+    };
   }, [sessionId]);
 }
 ```

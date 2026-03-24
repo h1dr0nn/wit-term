@@ -57,6 +57,31 @@ Wit believes a terminal **does not need AI** to be smart. It only needs to:
 
 Everything is deterministic, fast, and under user control.
 
+### Agent-Aware Terminal — Killer Feature
+
+Beyond context-aware completions, Wit introduces a new category: the **agent-aware terminal**. AI agent CLIs (Claude Code, Aider, Codex CLI, Copilot CLI) are exploding in usage, but they all run in "dumb" terminals. Developers must open additional tabs, editors, and tools to track what an agent is doing — token cost, which files are being modified, diffs, git status.
+
+Wit solves this by auto-detecting agent processes and opening a **right sidebar dashboard** with:
+
+- **Process detection** — automatically knows when an AI agent is running
+- **Token/cost tracking** — realtime usage and cost counter
+- **File change monitoring** — tracks which files the agent modifies with inline diffs
+- **Activity timeline** — structured view of agent actions (thinking, editing, tool use)
+- **Conversation view** — readable format of agent conversation (not raw terminal output)
+
+The detection works through 4 progressive layers:
+
+| Layer | Mechanism | Requires agent change |
+|---|---|---|
+| L1: Process Detection | Monitor PTY process tree | No |
+| L2: Output Parsing | Parse agent stdout patterns | No |
+| L3: Filesystem Watching | Track file changes via notify | No |
+| L4: Wit Protocol | Two-way socket communication | Yes (optional) |
+
+Layers 1-3 are fully passive — they work with any existing agent CLI without modification. Layer 4 is a future protocol for rich two-way integration.
+
+**See:** [Agent Detection Spec](03-specifications/agent-detection.md) · [Agent Sidebar UI](04-ui-ux/sidebar-right.md) · [Wit Protocol](03-specifications/wit-protocol.md)
+
 ---
 
 ## Project Assessment

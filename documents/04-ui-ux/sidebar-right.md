@@ -1,6 +1,6 @@
-# Context Sidebar (Right)
+# Agent Sidebar (Right)
 
-> **Status:** approved
+> **Status:** draft
 > **Last updated:** 2026-03-23
 > **Owner:** Core Team
 
@@ -8,13 +8,7 @@
 
 ## 1. Overview
 
-The right sidebar displays contextual information related to the current session. This information is automatically updated as the user works, helping them quickly grasp the state of the project, git, and environment without needing to type commands.
-
-**Design principles:**
-- Minimal, info-dense: lots of information in little space
-- Read-only (mostly): display only, not an input form
-- Auto-update: updates when context changes
-- Non-intrusive: hidden by default, only shown when the user needs it
+The right sidebar is dedicated to agent monitoring. It provides real-time visibility into AI coding agents (Claude Code, Aider, Codex CLI, etc.) running inside a terminal session. The sidebar auto-opens when the system detects an agent process and displays activity, file changes, conversation history, and cost tracking. It does not require any configuration from the user — detection and display are fully automatic.
 
 ---
 
@@ -24,346 +18,335 @@ The right sidebar displays contextual information related to the current session
 
 | Property        | Value                          |
 |-----------------|--------------------------------|
-| Default width   | 280px                          |
-| Min width       | 200px (when resizing)          |
-| Max width       | 400px (when resizing)          |
+| Default width   | 360px                          |
+| Min width       | 280px (when resizing)          |
+| Max width       | 50% of viewport width          |
 | Collapsed width | 0px (completely hidden)        |
 
-### 2.2. Default State
-
-- **Hidden by default**: right sidebar is not shown when the app is first opened
-- **User preference**: state (open/closed) is saved and restored on restart
-- **Auto-hide**: does not auto-close while user is working; only closes when user toggles
-
-### 2.3. Resize
+### 2.2. Resize
 
 - **Drag handle**: left border of sidebar, 4px hit area
-- **Cursor**: `col-resize` on hover
-- **Persist**: width is saved to user preferences
+- **Cursor**: `col-resize` when hovering over drag handle
+- **Visual**: drag handle shows a 2px vertical line colored `--color-border` on hover
+- **Snap**: no snap points, free resize within the 280px–50% range
+- **Persist**: width is saved to user preferences, per-user (not per-session)
 
-### 2.4. Overall Structure
+### 2.3. Structure
 
 ```
-+------------------------------+
-|  Context           [>]       |  <- Header
-+------------------------------+
-|  v Project Info              |  <- Section 1
-|    Name: my-project          |
-|    Type: Node.js             |
-|    Path: ~/projects/my-proj  |
-+------------------------------+
-|  v Git                       |  <- Section 2
-|    Branch: main              |
-|    Status: clean             |
-|    Ahead: 0 / Behind: 0     |
-|    Recent commits...         |
-+------------------------------+
-|  v Environment               |  <- Section 3
-|    Shell: bash 5.2           |
-|    Node: v20.11.0            |
-|    Python: 3.12.1            |
-+------------------------------+
-|  v Active Providers          |  <- Section 4
-|    [*] Git Provider          |
-|    [*] Node Provider         |
-|    [ ] Python Provider       |
-+------------------------------+
-|  v Quick Actions (future)    |  <- Section 5
-|    [Run Tests]               |
-|    [Build]                   |
-+------------------------------+
++----------------------------------+
+|  [icon] Claude Code    [$] [X]   |  <- Header (agent name, cost, close)
++----------------------------------+
+|  [Activity] [Files] [Conversation]|  <- Tab Bar
++----------------------------------+
+|                                  |
+|                                  |
+|  (Tab Content Area)              |  <- Scrollable content
+|                                  |
+|                                  |
+|                                  |
++----------------------------------+
+|  [Pause] [Undo] [Stop] [Approve]|  <- Actions Bar
++----------------------------------+
 ```
 
 ---
 
-## 3. Toggle (Collapse/Expand)
+## 3. Open/Close Behavior
 
-### 3.1. Toggle Methods
+### 3.1. Auto-Open
 
-| Method              | Description                      |
-|---------------------|----------------------------------|
-| Ctrl+Shift+B        | Toggle sidebar visibility        |
-| Toggle button       | Icon button [>] in header        |
-| Status bar button   | (Optional) icon in status bar    |
+- **Trigger**: Layer 1 emits an `AgentDetected` event for the active terminal session
+- **Animation**: slide in from right, 200ms ease-out
+- **Condition**: sidebar must not have been manually closed by the user during this session; if the user closed it manually, auto-open is suppressed until the next agent session
 
-### 3.2. Animation
+### 3.2. Auto-Close
 
-- Same as left sidebar: slide 200ms ease-out
-- Terminal view resizes accordingly
-- Reduce motion: instant
+- **Never**: the sidebar does not auto-close when an agent exits
+- **Rationale**: the user may want to review the session summary, file changes, or conversation history after the agent finishes
+- **State**: transitions to "Session Ended" state (see Section 8)
+
+### 3.3. Manual Toggle
+
+| Method            | Description                              |
+|-------------------|------------------------------------------|
+| Ctrl+Shift+A      | Toggle agent sidebar visibility          |
+| Button             | Icon button in the terminal toolbar area |
+| Collapse button   | Close button [X] in sidebar header       |
+
+### 3.4. Animation
+
+- **Duration**: 200ms ease-out
+- **Effect**: slide right (collapse), slide left (expand)
+- **Terminal resize**: terminal view expands/shrinks accordingly, triggers grid recalculation
+- **Reduce motion**: instant show/hide instead of slide
+
+### 3.5. Per-Tab Isolation
+
+- Each terminal tab maintains its own independent agent sidebar state
+- Switching tabs switches the sidebar content (or hides it if that tab has no agent)
+- Width preference is shared across all tabs
 
 ---
 
-## 4. Header
+## 4. Header Section
+
+### 4.1. Layout
 
 ```
-+------------------------------+
-|  Context              [>]    |
-+------------------------------+
++----------------------------------------------+
+|  [icon] Claude Code   gpt-4  12.4k  $0.03 [X]|
++----------------------------------------------+
+   ^      ^              ^      ^      ^      ^
+   |      |              |      |      |      Close button
+   |      |              |      |      Cost counter
+   |      |              |      Token counter
+   |      |              Model badge
+   |      Agent name
+   Agent icon
 ```
 
-- **Title**: "Context", font `--text-md`, weight 600
-- **Collapse button**: icon CaretRight (collapse to right), 28x28px, ghost style
-- **Height**: 48px
+### 4.2. Left Group
+
+- **Agent icon**: 20x20px, agent-specific icon (e.g., Claude icon, Aider icon, generic bot icon)
+- **Agent name**: detected agent name, font `--text-md`, weight 600, color `--color-text`
+
+### 4.3. Center Group
+
+- **Model badge**: pill-shaped badge, font `--text-xs`, background `--color-surface-hover`, color `--color-text-secondary`. Displays the model name when available (e.g., "opus", "sonnet"). Hidden if unknown.
+- **Token counter**: font `--text-xs`, color `--color-text-secondary`. Format: abbreviated (e.g., "12.4k"). Hidden if data unavailable.
+- **Cost counter**: font `--text-xs`, color `--color-text-secondary`. Format: "$0.03". Hidden if data unavailable.
+
+### 4.4. Right Group
+
+- **Close button**: icon button (X), 28x28px, ghost style, `aria-label="Close agent sidebar"`
+
+### 4.5. Data Source
+
+- Token and cost data comes from Layer 2 (output parsing) or Layer 4 (Wit Protocol)
+- If neither source provides data, the counters are hidden (not shown as zero)
+- **Height**: 48px (`--sp-12`)
 - **Padding**: 0 `--sp-3`
 - **Background**: `--color-surface`
 - **Border bottom**: 1px solid `--color-border-muted`
 
 ---
 
-## 5. Sections
+## 5. Tabs
 
-Each section is a collapsible panel with a header and content.
+### 5.1. Tab Bar
 
-### 5.1. Section Header
+```
++----------------------------------------------+
+|  [Activity]    [Files]    [Conversation]      |
++----------------------------------------------+
+```
 
-- **Height**: 32px
-- **Padding**: `--sp-1` vertical, `--sp-3` horizontal
-- **Icon**: CaretDown (expanded) / CaretRight (collapsed), 16px
-- **Title**: `--text-sm`, weight 500, `--color-text`
-- **Hover**: background `--color-surface-hover`
-- **Click**: toggles section expand/collapse
-- **Keyboard**: Enter/Space to toggle
+- **Height**: 36px
+- **Style**: underline indicator on active tab, 2px solid `--color-primary`
+- **Font**: `--text-sm`, weight 500
+- **Active tab text**: `--color-text`
+- **Inactive tab text**: `--color-text-secondary`
+- **Hover**: `--color-text`, background `--color-surface-hover`
+- **Badge**: each tab may show a count badge (e.g., Files tab shows "3" for 3 changed files)
 
-### 5.2. Section Content
+### 5.2. Activity Tab
 
-- **Padding**: `--sp-2` vertical, `--sp-3` horizontal (left indent adds `--sp-4` to align with title)
-- **Background**: transparent (same `--color-surface` as sidebar)
-- **Text**: `--text-sm`, `--color-text-secondary`
-- **Labels**: `--color-text-muted`, right-side values `--color-text`
+Vertical timeline showing the agent's actions in chronological order.
+
+#### Timeline Entry Structure
+
+```
+  [icon]  Action description            2m ago
+          Optional detail text (collapsible)
+     |
+  [icon]  Next action                   1m ago
+     |
+  [icon]  Current action (highlighted)    now
+```
+
+#### Entry Types
+
+| Type       | Icon        | Description                           |
+|------------|-------------|---------------------------------------|
+| Thinking   | Brain       | Agent reasoning, collapsible content  |
+| Tool Use   | Wrench      | Tool/command invocation               |
+| File Edit  | File        | File path shown alongside icon        |
+| Error      | X (red)     | Error message, always expanded        |
+
+#### Behavior
+
+- **Current entry**: highlighted with `--color-primary` accent on the left border (2px)
+- **Auto-scroll**: scrolls to the latest entry as new entries appear; pauses auto-scroll if user has scrolled up manually
+- **Timestamps**: relative format ("2m ago", "just now") switching to absolute format ("14:32") after 1 hour
+- **Collapsible**: Thinking and Tool Use entries can be expanded/collapsed; collapsed by default except the current entry
+
+### 5.3. Files Tab
+
+List of files changed by the agent during the current session.
+
+#### File Entry Structure
+
+```
+  [+]  src/components/Button.tsx        [Undo]
+  [~]  src/utils/helpers.ts             [Undo]
+  [-]  src/old-module.ts                [Undo]
+```
+
+#### Behavior
+
+- **Icons**: green `+` (created), yellow `~` (modified), red `-` (deleted)
+- **Path**: relative to project root, font `--text-sm`, monospace
+- **Click to expand**: shows inline diff view below the entry
+- **Diff view**: red/green line coloring for removed/added lines, syntax highlighted using the current theme
+- **Git baseline**: comparison is against the git state at the moment the agent session started (Layer 3 snapshot)
+- **"Undo" button**: per-file, appears on hover, restores the file to its baseline state via `git checkout` or `git restore`
+- **Summary bar** (top of Files tab): "3 files changed (+45 -12)", font `--text-xs`, color `--color-text-secondary`
+
+### 5.4. Conversation Tab
+
+Readable view of the agent conversation, distinct from the raw terminal output.
+
+#### Message Styling
+
+| Role       | Alignment    | Background                  |
+|------------|--------------|------------------------------|
+| User       | Right-aligned| `--color-surface-hover`      |
+| Assistant  | Left-aligned | `--color-surface`            |
+
+#### Content Rendering
+
+- **Code blocks**: syntax highlighted, with language label and copy button
+- **Thinking blocks**: collapsible, dimmed text (`--color-text-muted`), italic, prefixed with "Thinking..." label
+- **Tool calls**: compact single-line display (tool name + summary), click to expand full input/output
+- **Markdown**: rendered inline (bold, italic, lists, links)
 
 ---
 
-## 6. Section: Project Info
+## 6. Actions Bar
 
-### 6.1. When Displayed
+Always visible at the bottom of the sidebar, regardless of which tab is active.
 
-- Always displayed (or hidden if no project is detected)
-
-### 6.2. Content
-
-| Field       | Description                    | Example                  |
-|-------------|--------------------------------|--------------------------|
-| Name        | Project name (from package.json, Cargo.toml, etc.) | `my-project` |
-| Type        | Project type with icon         | Node.js, Rust, Python    |
-| Root path   | Root path of the project       | `~/projects/my-project`  |
-
-### 6.3. Layout
+### 6.1. Layout
 
 ```
-Project Info
-  Name     my-project
-  Type     [icon] Node.js
-  Path     ~/projects/my-proj...
++----------------------------------------------+
+|  [Pause]  [Undo Last]  [Stop]  [Approve]     |
++----------------------------------------------+
 ```
 
-- **Path**: truncated from the middle if too long, tooltip shows full path
-- **Type icon**: small icon (16px) by language/framework
-  - Node.js: green
-  - Rust: orange
-  - Python: blue/yellow
-  - Go: sky blue
-  - Generic: Folder icon
+- **Height**: 48px
+- **Padding**: `--sp-2` vertical, `--sp-3` horizontal
+- **Background**: `--color-surface`
+- **Border top**: 1px solid `--color-border-muted`
+- **Button style**: compact icon+label buttons, `--text-xs`
+- **Button gap**: `--sp-2`
 
-### 6.4. Empty State
+### 6.2. Actions
 
-When no project is detected:
-- Text: "No project detected" colored `--color-text-muted`
-- Displays current working directory instead of project info
+| Button       | Icon    | Behavior                                                                 |
+|--------------|---------|--------------------------------------------------------------------------|
+| Pause/Resume | Pause   | Sends SIGTSTP to pause, SIGCONT to resume (Layer 1). Toggles label.     |
+| Undo Last    | Undo    | Reverts the most recent file change (Layer 3). Disabled if no changes.   |
+| Stop         | Square  | Sends SIGTERM to the agent process. Confirmation dialog before sending.  |
+| Approve      | Check   | Visible only when a Layer 4 approval request is pending. Green style.    |
+| Reject       | X       | Visible only when a Layer 4 approval request is pending. Red style.      |
+
+### 6.3. Button States
+
+- **Disabled**: grayed out (`opacity: 0.4`), no pointer events. Pause is disabled when no agent is running. Undo Last is disabled when no file changes exist.
+- **Active/Toggle**: Pause button shows "Resume" label and Play icon when the agent is paused
+- **Approve/Reject**: these two buttons replace the normal actions bar when an approval request is pending, with a description of the request shown above them
 
 ---
 
-## 7. Section: Git
+## 7. Approval Request Card
 
-### 7.1. When Displayed
+When a Layer 4 agent sends an approval request, a card appears above the actions bar (or replaces the tab content area, depending on priority).
 
-- Only displayed when inside a git repository
-- Section is completely hidden if not a git repo
-
-### 7.2. Content
-
-| Field           | Description                    | Example              |
-|-----------------|--------------------------------|----------------------|
-| Branch          | Current branch name            | `main`, `feature/x`  |
-| Status          | Clean/dirty indicator          | Clean / 3 modified   |
-| Ahead/Behind    | Number of commits ahead/behind remote | Ahead 2 / Behind 0  |
-| Recent commits  | 3-5 most recent commits        | List of commits      |
-
-### 7.3. Layout
+### 7.1. Layout
 
 ```
-Git
-  Branch    [icon] main
-  Status    [dot] Clean
-  Remote    Ahead 2 / Behind 0
-
-  Recent Commits
-    a1b2c3  Fix login bug         2h ago
-    d4e5f6  Add user model        5h ago
-    g7h8i9  Initial commit        1d ago
++----------------------------------------------+
+|  Approval Required                            |
+|                                               |
+|  Action: Delete file                          |
+|  Target: src/legacy/old-module.ts             |
+|  Reason: "File is no longer referenced"       |
+|                                               |
+|  Timeout: 28s remaining                       |
+|                                               |
+|  [Approve]                    [Reject]        |
++----------------------------------------------+
 ```
 
-### 7.4. Status Indicators
-
-| Status    | Color               | Icon/Indicator           |
-|-----------|---------------------|--------------------------|
-| Clean     | `--color-success`   | Green dot                |
-| Dirty     | `--color-warning`   | Yellow dot + number of modified files |
-| Conflict  | `--color-error`     | Red dot                  |
-| Detached  | `--color-info`      | Blue info icon           |
-
-### 7.5. Branch Name
-
-- Icon: GitBranch (16px)
-- Max width: truncate with ellipsis if branch name is too long
-- Tooltip: shows full branch name
-
-### 7.6. Recent Commits
-
-- Shows 3 commits by default, click "Show more" to show 5
-- Each commit: `short_hash  message  relative_time`
-- Hash: `--color-primary`, monospace font
-- Message: `--color-text`, truncated to 1 line
-- Time: `--color-text-muted`, right-aligned
+- **Background**: `--color-surface`, border 1px solid `--color-warning`
+- **Border-radius**: `--radius-md`
+- **Approve button**: green (`--color-success`), full width half
+- **Reject button**: red (`--color-error`), full width half
+- **Timeout**: countdown timer, `--color-warning`, hidden if no timeout set
+- **Auto-timeout**: if the timeout expires, the request is auto-rejected and the card dismisses
 
 ---
 
-## 8. Section: Environment
+## 8. States
 
-### 8.1. When Displayed
+### 8.1. Loading
 
-- Always displayed (at least has shell info)
+- **When**: agent detected but adapter is initializing
+- **Display**: spinner + "Connecting to {agent name}..."
+- **Duration**: typically < 1 second
 
-### 8.2. Content
+### 8.2. Active
 
-| Field           | Description                    | Example              |
-|-----------------|--------------------------------|----------------------|
-| Shell           | Shell name and version         | bash 5.2.21          |
-| Node            | Node.js version (if present)   | v20.11.0             |
-| Python          | Python version (if present)    | 3.12.1               |
-| Rust            | Rust toolchain (if present)    | 1.75.0 (stable)      |
-| Go              | Go version (if present)        | 1.22.0               |
-| Java            | Java version (if present)      | 21.0.1               |
-| Ruby            | Ruby version (if present)      | 3.3.0                |
+- **When**: agent is running and being monitored
+- **Display**: full sidebar with header, tabs, and actions bar
+- **Header**: shows live token/cost counters
 
-### 8.3. Layout
+### 8.3. Session Ended
+
+- **When**: agent process exits
+- **Display**: summary card at the top of the content area
+- **Summary card content**: duration, total tokens, total cost, number of files changed
+- **Tabs**: remain browsable (Activity, Files, Conversation still contain session data)
+- **Actions bar**: all buttons disabled except a "Browse History" link
+- **Header**: agent name with "(ended)" suffix, counters show final totals
+
+### 8.4. No Agent
+
+- **When**: no agent detected in the current terminal session
+- **Display**: centered message in the content area
 
 ```
-Environment
-  Shell     bash 5.2.21
-  Node      v20.11.0
-  Python    3.12.1
-  Rust      1.75.0
++----------------------------------------------+
+|                                               |
+|           [Bot Icon - 48px]                   |
+|                                               |
+|     No AI agent detected.                     |
+|     Run an agent CLI to activate              |
+|     the dashboard.                            |
+|                                               |
++----------------------------------------------+
 ```
 
-### 8.4. Detection
-
-- Only shows a runtime/language if detected in PATH or project config
-- Version is retrieved when the session starts and when cwd changes
-- Caches version info, does not re-query on every render
+- **Icon**: Bot/Robot, 48px, `--color-text-muted`
+- **Text**: `--text-base`, `--color-text-secondary`, centered
+- **Sidebar may be hidden**: if no agent has ever been detected in this tab, the sidebar remains closed
 
 ---
 
-## 9. Section: Active Providers
+## 9. Accessibility
 
-### 9.1. When Displayed
-
-- Always displayed (even if empty)
-
-### 9.2. Content
-
-List of context providers currently active for the current session.
-
-### 9.3. Layout
-
-```
-Active Providers
-  [*] Git Provider           running
-  [*] Node Provider          running
-  [ ] Python Provider        inactive
-  [!] Docker Provider        error
-```
-
-### 9.4. Provider States
-
-| State      | Icon/Indicator | Color              | Description                 |
-|------------|----------------|--------------------|---------------------------|
-| Running    | Filled circle  | `--color-success`  | Provider is running normally |
-| Inactive   | Empty circle   | `--color-text-muted`| Provider is not activated  |
-| Error      | Warning icon   | `--color-error`    | Provider encountered an error |
-| Loading    | Spinner        | `--color-primary`  | Provider is initializing   |
-
-### 9.5. Interactions
-
-- Hover: tooltip with provider details (name, state, last update time)
-- Click (future): toggle provider on/off
-- Error state: tooltip shows error message
-
----
-
-## 10. Section: Quick Actions (Future)
-
-> **Note**: This is a future feature, not implemented in v1.
-
-### 10.1. Concept
-
-Quick action buttons based on the current context:
-- **Node.js project**: "Run Tests" (`npm test`), "Build" (`npm run build`), "Dev" (`npm run dev`)
-- **Rust project**: "Build" (`cargo build`), "Test" (`cargo test`), "Run" (`cargo run`)
-- **Git**: "Pull" (`git pull`), "Push" (`git push`), "Stash" (`git stash`)
-
-### 10.2. Layout
-
-```
-Quick Actions
-  [> Run Tests]    [> Build]
-  [> Dev Server]   [> Lint]
-```
-
-- Buttons: secondary style, compact (28px height)
-- Grid: 2 columns
-- Auto-detect: actions are automatically created based on project type and scripts in config files
-
----
-
-## 11. Auto-Update Behavior
-
-### 11.1. Update Triggers
-
-| Event                    | Sections updated          |
-|--------------------------|---------------------------|
-| Session switch           | All sections              |
-| CWD change               | Project Info, Git, Environment |
-| Git operation            | Git section               |
-| File system change       | Project Info (if related) |
-| Provider status change   | Active Providers          |
-
-### 11.2. Update Strategy
-
-- **Debounce**: 500ms after the last event
-- **Non-blocking**: update runs in background, does not affect terminal performance
-- **Incremental**: only updates the affected section, does not re-render the entire sidebar
-- **Loading state**: shows a subtle spinner (or fade) when fetching new data
-
----
-
-## 12. Accessibility
-
-- **Sidebar role**: `role="complementary"`, `aria-label="Context information"`
-- **Sections**: `role="region"` with corresponding `aria-label`
-- **Section headers**: `role="button"`, `aria-expanded="true/false"`
-- **Collapse button**: `aria-label="Collapse context sidebar"` / `aria-label="Expand context sidebar"`
-- **Status indicators**: do not rely solely on color, include text/icon
-- **Keyboard**: Tab through section headers, Enter to toggle, Escape to return focus to terminal
-
----
-
-## 13. Colors & Theme Integration
-
-Sidebar must use design tokens from `design-system.md`:
-- Background: `--color-surface`
-- Text: `--color-text`, `--color-text-secondary`, `--color-text-muted`
-- Borders: `--color-border-muted`
-- Status colors: use semantic colors (`--color-success`, `--color-warning`, `--color-error`)
-
-When switching themes (dark/light), the sidebar automatically updates via CSS custom properties.
+- **Role**: sidebar has `role="complementary"` and `aria-label="Agent monitoring"`
+- **Tab bar**: `role="tablist"`, each tab has `role="tab"` and `aria-selected`
+- **Tab content**: `role="tabpanel"`, `aria-labelledby` referencing the corresponding tab
+- **Actions bar**: buttons have descriptive `aria-label` values (e.g., `aria-label="Pause agent"`, `aria-label="Stop agent process"`)
+- **Close button**: `aria-label="Close agent sidebar"`
+- **Approval card**: `role="alertdialog"`, `aria-label="Approval request"`, auto-focused when it appears
+- **Keyboard navigation**:
+  - Tab key moves between interactive elements within the sidebar
+  - Arrow Left/Right switches between tabs
+  - Escape returns focus to the terminal
+  - Enter activates the focused button or expands a collapsed entry
+- **Focus management**: when the sidebar opens (auto or manual), focus moves to the first tab; when it closes, focus returns to the terminal
+- **Screen reader**: activity timeline entries are announced as they appear (via `aria-live="polite"` on the timeline container)

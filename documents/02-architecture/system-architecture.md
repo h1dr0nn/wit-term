@@ -15,7 +15,7 @@ Wit uses a **3-layer** architecture with clear communication between layers:
 │                        FRONTEND (React/TS)                         │
 │                                                                     │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-│  │ Terminal  │  │ Session  │  │ Context  │  │   Completion      │  │
+│  │ Terminal  │  │ Session  │  │ Agent    │  │   Completion      │  │
 │  │   View    │  │ Sidebar  │  │ Sidebar  │  │     Popup         │  │
 │  └──────────┘  └──────────┘  └──────────┘  └───────────────────┘  │
 │                                                                     │
@@ -39,10 +39,10 @@ Wit uses a **3-layer** architecture with clear communication between layers:
 │  │ Manager  │  │ Emulator  │  │  Engine  │  │     Engine        │  │
 │  └──────────┘  └──────────┘  └──────────┘  └───────────────────┘  │
 │                                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                         │
-│  │  ANSI    │  │ Session  │  │  Config  │                         │
-│  │  Parser  │  │ Manager  │  │ Manager  │                         │
-│  └──────────┘  └──────────┘  └──────────┘                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
+│  │  ANSI    │  │ Session  │  │  Config  │  │   Agent           │  │
+│  │  Parser  │  │ Manager  │  │ Manager  │  │   Detection       │  │
+│  └──────────┘  └──────────┘  └──────────┘  └───────────────────┘  │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │                    OS / Platform Layer                        │  │
@@ -67,6 +67,7 @@ Contains all heavy logic and performance-critical operations:
 | **ANSI Parser** | Parse escape sequences from PTY output into structured data |
 | **Context Engine** | Detect project type, environment, git status |
 | **Completion Engine** | Load, match, rank completions based on context and input |
+| **Agent Detection** | Detect AI agent CLIs, parse output, watch filesystem, Wit Protocol |
 | **Session Manager** | Manage lifecycle of multiple terminal sessions |
 | **Config Manager** | Load/save user configuration, themes, keybindings |
 
@@ -126,7 +127,8 @@ wit-term/
 │   │   │   ├── emulator.rs         # Core state machine
 │   │   │   ├── grid.rs             # Grid/buffer management
 │   │   │   ├── cell.rs             # Cell representation
-│   │   │   └── cursor.rs           # Cursor state
+│   │   │   ├── cursor.rs           # Cursor state
+│   │   │   └── strip.rs            # ANSI stripping, grid-to-text, echo/prompt stripping, CWD extraction
 │   │   ├── parser/             # ANSI parser
 │   │   │   ├── mod.rs
 │   │   │   ├── state_machine.rs    # Parser state machine
@@ -171,6 +173,8 @@ wit-term/
 │   ├── components/
 │   │   ├── terminal/           # Terminal rendering
 │   │   │   ├── TerminalView.tsx
+│   │   │   ├── BlocksView.tsx          # Warp-style command block rendering
+│   │   │   ├── InputBar.tsx            # Command input bar with CWD display
 │   │   │   ├── TerminalGrid.tsx
 │   │   │   ├── TerminalCell.tsx
 │   │   │   ├── Cursor.tsx
@@ -200,6 +204,8 @@ wit-term/
 │   │   ├── useCompletion.ts
 │   │   ├── useContext.ts
 │   │   └── useKeybindings.ts
+│   ├── utils/                  # Utilities
+│   │   └── ansiParser.ts           # Frontend ANSI SGR parser for colored output
 │   ├── lib/                    # Utilities
 │   │   ├── tauri.ts                # Tauri IPC wrappers
 │   │   ├── theme.ts                # Theme utilities
@@ -251,6 +257,38 @@ Frontend: keydown event
               Rust: update terminal grid
               Rust: emit("terminal_output", { session_id, cells_changed })
               Frontend: update TerminalView
+```
+
+### Pattern 1b: Command Submission (Block Mode)
+
+```
+User presses Enter in InputBar
+    │
+    ▼
+Frontend: submit command via invoke("submit_command", { sessionId, command, commandId })
+    │
+    ▼
+Rust: atomically captures CaptureState (command_id, command, start_cursor_row, started_at)
+      then writes command + "\r" to PTY
+    │
+    ▼
+Shell: processes command, writes output to PTY
+    │
+    ▼
+Rust: PTY read loop detects output, converts grid rows to text via grid_to_ansi_text()
+      strips echo/prompt lines via strip.rs
+      emits command_output_chunk { session_id, command_id, output } incrementally
+    │
+    ▼
+Frontend: terminalStore.updateOutputChunk() appends to CapturedBlock
+    │
+    ▼
+Rust: detects command completion (next prompt appears)
+      emits command_output { session_id, command_id, output, duration_ms }
+    │
+    ▼
+Frontend: terminalStore.finalizeOutput() marks block complete
+          BlocksView renders CapturedOutputBlock with ANSI colors via AnsiOutput
 ```
 
 ### Pattern 2: User changes directory

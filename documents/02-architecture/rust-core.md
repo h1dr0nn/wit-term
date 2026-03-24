@@ -280,6 +280,27 @@ pub enum MouseMode {
 }
 ```
 
+### Module: Strip Utilities (`terminal/strip.rs`)
+
+The `strip.rs` module provides text extraction and cleanup utilities for the command capture pipeline:
+
+```rust
+/// Convert grid rows to text with ANSI SGR escape codes preserved
+pub fn grid_to_ansi_text(grid: &Grid, start_row: usize, end_row: usize) -> String;
+
+/// Strip ANSI escape sequences from text, returning plain text
+pub fn strip_ansi(text: &str) -> String;
+
+/// Remove the echoed command line and shell prompt from captured output
+pub fn strip_echo_and_prompt(output: &str, command: &str) -> String;
+
+/// Extract the current working directory from a shell prompt line
+/// by reading the grid row at the cursor position (supports PS1/CMD prompt formats)
+pub fn extract_cwd_from_prompt(grid: &Grid, cursor_row: usize) -> Option<String>;
+```
+
+**Usage:** Called by the PTY read loop when a command capture is active. `grid_to_ansi_text` converts the terminal grid cells (with their color attributes) into a string containing ANSI SGR codes, which the frontend can parse for colored rendering. `strip_echo_and_prompt` removes the echoed command and any trailing prompt so only the actual command output remains.
+
 ---
 
 ## Module: ANSI Parser (`parser/`)
@@ -480,9 +501,25 @@ pub struct Session {
     pub created_at: Instant,
     pub cwd: PathBuf,
 
+    /// Command capture state, shared between IPC handler and PTY reader threads
+    pub capture_state: Arc<Mutex<CaptureState>>,
+
     // Thread handles
     read_thread: Option<JoinHandle<()>>,
     shutdown_tx: Option<Sender<()>>,
+}
+
+/// Tracks the currently executing command for output capture.
+/// Set by submit_command, read by the PTY read loop, cleared on command completion.
+pub struct CaptureState {
+    /// ID of the active command (None if no capture in progress)
+    pub active_command_id: Option<String>,
+    /// The command text being captured
+    pub active_command: Option<String>,
+    /// Grid row where capture started (to know which rows contain output)
+    pub start_cursor_row: Option<usize>,
+    /// When the command was submitted
+    pub started_at: Option<Instant>,
 }
 
 pub struct ShellInfo {
@@ -498,6 +535,10 @@ impl SessionManager {
     pub fn get_session_mut(&mut self, id: SessionId) -> Option<&mut Session>;
     pub fn list_sessions(&self) -> Vec<SessionInfo>;
     pub fn set_active(&mut self, id: SessionId) -> Result<()>;
+
+    /// Atomically set capture state and write command to PTY.
+    /// Called by the submit_command IPC handler.
+    pub fn submit_command(&mut self, id: SessionId, command: String, command_id: String) -> Result<()>;
 }
 ```
 
@@ -517,6 +558,7 @@ crossbeam-channel = "0.5"
 parking_lot = "0.12"         # Faster Mutex/RwLock
 bitflags = "2"
 compact_str = "0.8"          # Small string optimization
+unicode-width = "0.2"        # Character width detection (wcwidth equivalent)
 toml = "0.8"                 # Config/completion data parsing
 notify = "7"                 # File system watching
 dirs = "6"                   # Standard directory paths

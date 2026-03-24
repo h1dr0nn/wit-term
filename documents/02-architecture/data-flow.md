@@ -321,6 +321,126 @@ Frontend:
 
 ---
 
+## Flow 6: Command Submission & Output Capture
+
+The full cycle from command entry in the InputBar through output capture to block rendering.
+
+```
+User types command in InputBar and presses Enter
+     │
+     ▼
+Frontend: generate commandId (UUID)
+     │
+     ├── terminalStore.addCapturedBlock({
+     │     id: commandId,
+     │     command: "cargo build",
+     │     cwd: currentCwd,
+     │     gitBranch: currentBranch,
+     │     submittedAt: Date.now()
+     │   })
+     │
+     └── invoke("submit_command", {
+           sessionId, command: "cargo build", commandId
+         })
+     │
+     ▼
+Rust: submit_command handler
+     │
+     ├── 1. Lock session state
+     │
+     ├── 2. Set CaptureState on session:
+     │   active_command_id = commandId
+     │   active_command = "cargo build"
+     │   start_cursor_row = current cursor row
+     │   started_at = Instant::now()
+     │
+     ├── 3. Write "cargo build\r" to PTY master
+     │
+     └── 4. Return Ok(())
+     │
+     ▼
+Shell: executes "cargo build"
+     │
+     ├── Echo: "cargo build\n" (shell echoes the command)
+     ├── Output: "   Compiling wit-term v0.1.0\n"
+     ├── Output: "    Finished dev [unoptimized] target...\n"
+     └── Prompt: "~/wit-term $" (next prompt)
+     │
+     ▼
+Rust: PTY read loop (background thread)
+     │
+     ├── Reads bytes, feeds to ANSI parser, updates grid
+     │
+     ├── Checks CaptureState (shared via Arc<Mutex>):
+     │   If active_command_id is set:
+     │   │
+     │   ├── Extract text from grid rows using grid_to_ansi_text()
+     │   │   (terminal/strip.rs: converts grid cells to text with ANSI SGR codes)
+     │   │
+     │   ├── Strip echo line (the command itself) from output
+     │   │   (terminal/strip.rs: strip_echo_and_prompt)
+     │   │
+     │   ├── Detect if prompt has reappeared (command finished)
+     │   │   (terminal/strip.rs: extract_cwd_from_prompt)
+     │   │
+     │   ├── Emit incremental chunks:
+     │   │   emit("command_output_chunk", {
+     │   │     session_id, command_id, output: "   Compiling..."
+     │   │   })
+     │   │
+     │   └── On command completion (prompt detected):
+     │       ├── Calculate duration_ms
+     │       ├── Emit final output:
+     │       │   emit("command_output", {
+     │       │     session_id, command_id,
+     │       │     output: full_output_text,
+     │       │     duration_ms: 2340
+     │       │   })
+     │       └── Clear CaptureState (active_command_id = None)
+     │
+     ▼
+Frontend: event listeners (in TerminalView)
+     │
+     ├── "command_output_chunk":
+     │   terminalStore.updateOutputChunk(commandId, chunkText)
+     │   -> CapturedBlock.outputText is appended
+     │   -> CapturedBlock.lastChunkAt is updated
+     │   -> BlocksView re-renders CapturedOutputBlock
+     │
+     └── "command_output":
+         terminalStore.finalizeOutput(commandId, fullOutput, durationMs)
+         -> CapturedBlock.outputText = fullOutput
+         -> CapturedBlock.durationMs = durationMs
+         -> BlocksView shows final rendered block
+     │
+     ▼
+BlocksView: renders CapturedOutputBlock
+     │
+     ├── Header: command text, CWD, git branch, duration badge
+     │
+     └── Body: plain text with ANSI colors
+         rendered via AnsiOutput component (uses src/utils/ansiParser.ts)
+         which parses SGR codes into styled <span> elements
+```
+
+### Data types
+
+```typescript
+// CapturedBlock in terminalStore
+interface CapturedBlock {
+  id: string;           // commandId (UUID)
+  command: string;      // the command text
+  cwd: string;          // working directory at submission
+  gitBranch?: string;   // git branch at submission
+  submittedAt: number;  // timestamp
+  outputText: string;   // accumulated output (plain text with ANSI codes)
+  lastChunkAt?: number; // timestamp of last chunk received
+  durationMs?: number;  // total execution time (set on finalize)
+}
+```
+
+---
+
 ## State Ownership
 
 | State | Owner | Access |

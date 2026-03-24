@@ -36,6 +36,7 @@ async internally in Rust.
 | `destroy_session` | `{ sessionId }` | `void` | Close a session |
 | `list_sessions` | - | `SessionInfo[]` | List sessions |
 | `send_input` | `{ sessionId, data }` | `void` | Send input to PTY |
+| `submit_command` | `{ sessionId, command, commandId }` | `void` | Atomically capture state + write command to PTY |
 | `resize_session` | `{ sessionId, cols, rows }` | `void` | Resize terminal |
 | `get_session_grid` | `{ sessionId }` | `GridSnapshot` | Get current grid state |
 
@@ -104,6 +105,7 @@ fn main() {
             destroy_session,
             list_sessions,
             send_input,
+            submit_command,
             resize_session,
             get_session_grid,
             request_completions,
@@ -136,6 +138,8 @@ Events are fire-and-forget push notifications from Rust to the frontend.
 | `session_exited` | `{ sessionId, exitCode }` | Shell process exited |
 | `context_changed` | `{ sessionId, context }` | CWD or environment changed |
 | `completion_hint` | `{ sessionId, hint }` | Inline hint available |
+| `command_output` | `{ session_id, command_id, output, duration_ms }` | Command finished, full output + timing |
+| `command_output_chunk` | `{ session_id, command_id, output }` | Incremental output chunk during execution |
 
 ### Event Emission (Rust)
 

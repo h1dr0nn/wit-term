@@ -331,7 +331,86 @@ Recognized patterns:
 
 ---
 
-## 12. Performance Requirements
+## 12. Command Blocks View (Warp-style)
+
+### 12.1. Overview
+
+Wit supports a "block mode" rendering approach inspired by Warp, where each command and its output are displayed as discrete visual blocks rather than a continuous scrolling terminal. This is implemented via the `BlocksView` and `InputBar` components.
+
+### 12.2. Layout
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  BlocksView (scrollable list of command blocks)              │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ $ cargo build                     ~/wit-term  main  2s │  │
+│  │ ──────────────────────────────────────────────────────  │  │
+│  │    Compiling wit-term v0.1.0                            │  │
+│  │     Finished dev [unoptimized] target(s) in 2.34s       │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ $ git status                      ~/wit-term  main  <1s│  │
+│  │ ──────────────────────────────────────────────────────  │  │
+│  │ On branch main                                          │  │
+│  │ Changes not staged for commit:                          │  │
+│  │   modified:   src/lib.rs                                │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│  InputBar                                                    │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ ~/wit-term (main)                                       │  │
+│  │ $ [cursor]                                              │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 12.3. CapturedOutputBlock
+
+Each command block (`CapturedOutputBlock` component) displays:
+
+| Element | Description |
+|---|---|
+| **Command** | The submitted command text |
+| **CWD** | Working directory at submission time |
+| **Git branch** | Branch name (if in a git repo) |
+| **Duration** | Execution time badge (shown after completion) |
+| **Output** | Command output rendered with ANSI colors via `AnsiOutput` |
+
+### 12.4. AnsiOutput Component
+
+The `AnsiOutput` component uses `src/utils/ansiParser.ts` to parse plain text containing ANSI SGR escape codes and render it as styled `<span>` elements. This replaces the older approach of slicing grid rows (`FlatBlock`) with a simpler text-based pipeline.
+
+Supported SGR codes:
+- Foreground/background colors (standard, 256-color, true color)
+- Bold, italic, underline, strikethrough, dim
+- Reset (`\x1b[0m`)
+
+### 12.5. InputBar
+
+The `InputBar` component provides a Warp-style command input area:
+
+- Displays the current working directory and git branch inside the input area
+- Taller than a traditional single-line prompt
+- On Enter: calls `submit_command` IPC and creates a new `CapturedBlock`
+- Supports standard terminal shortcuts (Ctrl+C, Ctrl+D, etc.) by forwarding to `send_input`
+
+### 12.6. Data Flow
+
+1. User types in `InputBar` and presses Enter
+2. Frontend generates a `commandId` (UUID) and calls `addCapturedBlock`
+3. Frontend invokes `submit_command(sessionId, command, commandId)`
+4. Rust sets `CaptureState` and writes command to PTY
+5. PTY read loop emits `command_output_chunk` events with incremental output
+6. Frontend appends chunks to `CapturedBlock.outputText`
+7. On completion, Rust emits `command_output` with full output and duration
+8. Frontend calls `finalizeOutput` to mark the block complete
+
+---
+
+## 13. Performance Requirements
 
 | Metric                  | Target                         |
 |-------------------------|--------------------------------|
