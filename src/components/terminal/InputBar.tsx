@@ -1,5 +1,7 @@
 import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTerminalStore } from "../../stores/terminalStore";
+import { useCompletionStore, type CompletionItem } from "../../stores/completionStore";
 
 interface ContextInfo {
   provider: string;
@@ -17,16 +19,47 @@ interface ProjectContext {
 
 interface InputBarProps {
   cwd: string;
+  sessionId: string;
   onSubmit: (input: string) => void;
   onTab: (input: string, cursorPos: number) => void;
   visible: boolean;
+  agentMode?: boolean;
+  agentName?: string;
+  agentFile?: string;
 }
 
-export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
+export function InputBar({ cwd, sessionId, onSubmit, onTab, visible, agentMode, agentName, agentFile }: InputBarProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [context, setContext] = useState<ProjectContext | null>(null);
   const [composing, setComposing] = useState(false);
   const [inputValue, setInputValue] = useState("");
+
+  // Ghost text state
+  const [ghostText, setGhostText] = useState("");
+  const ghostFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Command history
+  const capturedBlocks = useTerminalStore((s) => s.capturedBlocks);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const savedInputRef = useRef("");
+
+  // Completion store
+  const completionShow = useCompletionStore((s) => s.show);
+
+  const history = useMemo(() => {
+    const blocks = capturedBlocks.get(sessionId) ?? [];
+    // Newest first, unique commands
+    const seen = new Set<string>();
+    const cmds: string[] = [];
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const cmd = blocks[i].command;
+      if (!seen.has(cmd)) {
+        seen.add(cmd);
+        cmds.push(cmd);
+      }
+    }
+    return cmds;
+  }, [capturedBlocks, sessionId]);
 
   useEffect(() => {
     if (visible) {
@@ -42,42 +75,174 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
       .catch(() => setContext(null));
   }, [cwd]);
 
+  // Debounced ghost text fetch on input change (disabled in agent mode)
+  const fetchGhostText = useCallback(
+    (value: string) => {
+      if (ghostFetchTimer.current) clearTimeout(ghostFetchTimer.current);
+      if (agentMode || !value.trim()) {
+        setGhostText("");
+        return;
+      }
+      ghostFetchTimer.current = setTimeout(() => {
+        const cursorPos = value.length;
+        invoke<CompletionItem[]>("request_completions", {
+          input: value,
+          cursorPos,
+          cwd,
+        })
+          .then((items) => {
+            if (items.length > 0) {
+              // Find ghost text: suffix of top match after current word
+              const currentWord = getCurrentWord(value);
+              const topText = items[0].text;
+              if (topText.startsWith(currentWord) && topText.length > currentWord.length) {
+                setGhostText(topText.slice(currentWord.length));
+              } else {
+                setGhostText("");
+              }
+            } else {
+              setGhostText("");
+            }
+          })
+          .catch(() => setGhostText(""));
+      }, 150);
+    },
+    [cwd, agentMode],
+  );
+
+  const setInputAndSync = useCallback(
+    (value: string) => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.value = value;
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+      setInputValue(value);
+      setGhostText("");
+    },
+    [],
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Stop events from reaching TerminalView's handler
       e.stopPropagation();
-
-      // Skip during IME composition (Vietnamese, Chinese, etc.)
       if (composing || e.nativeEvent.isComposing || e.key === "Process") return;
 
       const input = inputRef.current;
       if (!input) return;
 
-      // Let browser handle native clipboard/edit shortcuts
+      // Native clipboard/edit shortcuts
       if (e.ctrlKey && !e.shiftKey) {
         const k = e.key.toLowerCase();
         if (k === "c" || k === "v" || k === "a" || k === "z" || k === "x") {
-          return; // Native copy/paste/select-all/undo/cut
+          return;
         }
       }
 
+      // Ctrl+Space → show completion dropdown
+      if (e.ctrlKey && e.key === " ") {
+        e.preventDefault();
+        const value = input.value;
+        const cursorPos = input.selectionStart ?? value.length;
+        invoke<CompletionItem[]>("request_completions", {
+          input: value,
+          cursorPos,
+          cwd,
+        })
+          .then((items) => {
+            if (items.length > 0) completionShow(items);
+          })
+          .catch(() => {});
+        return;
+      }
+
+      // Agent mode: Shift+Tab → send Shift+Tab escape sequence to PTY (accept)
+      if (agentMode && e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        invoke("send_input", { sessionId, data: "\x1b[Z" }).catch(() => {});
+        return;
+      }
+
+      // Agent mode: Escape → send Escape to PTY
+      if (agentMode && e.key === "Escape") {
+        e.preventDefault();
+        invoke("send_input", { sessionId, data: "\x1b" }).catch(() => {});
+        return;
+      }
+
+      // Enter → submit
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         const value = input.value;
+        if (agentMode) {
+          // In agent mode, send even empty lines (allows confirming prompts)
+          onSubmit(value);
+          input.value = "";
+          input.style.height = "auto";
+          setInputValue("");
+          setGhostText("");
+          setHistoryIndex(-1);
+          savedInputRef.current = "";
+          return;
+        }
         if (value.trim()) {
           onSubmit(value);
           input.value = "";
           input.style.height = "auto";
           setInputValue("");
+          setGhostText("");
+          setHistoryIndex(-1);
+          savedInputRef.current = "";
         }
+        return;
       }
 
+      // Tab → accept ghost text or trigger completion
       if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey) {
         e.preventDefault();
-        onTab(input.value, input.selectionStart ?? input.value.length);
+        if (ghostText) {
+          // Insert ghost text at cursor
+          const value = input.value + ghostText;
+          setInputAndSync(value);
+          // Move cursor to end
+          setTimeout(() => {
+            input.selectionStart = input.selectionEnd = value.length;
+          }, 0);
+          fetchGhostText(value);
+        } else {
+          onTab(input.value, input.selectionStart ?? input.value.length);
+        }
+        return;
+      }
+
+      // Arrow Up → previous history
+      if (e.key === "ArrowUp" && !e.ctrlKey && !e.shiftKey) {
+        if (history.length === 0) return;
+        e.preventDefault();
+        if (historyIndex === -1) {
+          savedInputRef.current = input.value;
+        }
+        const newIndex = Math.min(historyIndex + 1, history.length - 1);
+        setHistoryIndex(newIndex);
+        setInputAndSync(history[newIndex]);
+        return;
+      }
+
+      // Arrow Down → next history / restore
+      if (e.key === "ArrowDown" && !e.ctrlKey && !e.shiftKey) {
+        if (historyIndex < 0) return;
+        e.preventDefault();
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        if (newIndex < 0) {
+          setInputAndSync(savedInputRef.current);
+        } else {
+          setInputAndSync(history[newIndex]);
+        }
+        return;
       }
     },
-    [onSubmit, onTab, composing],
+    [onSubmit, onTab, composing, ghostText, history, historyIndex, cwd, completionShow, fetchGhostText, setInputAndSync, agentMode, sessionId],
   );
 
   const handleInput = useCallback(() => {
@@ -86,9 +251,10 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
     setInputValue(el.value);
-  }, []);
+    setHistoryIndex(-1);
+    fetchGhostText(el.value);
+  }, [fetchGhostText]);
 
-  // Click anywhere on the bar to focus the input
   const handleContainerClick = useCallback(() => {
     inputRef.current?.focus();
   }, []);
@@ -104,26 +270,24 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
   const python = context?.providers?.python;
 
   const gitBranch = git?.data?.branch as string | undefined;
-  const nodeVersion = node?.data?.version as string | undefined;
-  const rustVersion = rust?.data?.version as string | undefined;
-  const pythonVersion = python?.data?.version as string | undefined;
+  const nodeRuntimeVersion = node?.data?.runtime_version as string | undefined;
+  const rustRuntimeVersion = rust?.data?.runtime_version as string | undefined;
+  const pythonRuntimeVersion = python?.data?.runtime_version as string | undefined;
 
-  // Total changes count (modified + staged + untracked)
   const modifiedCount = (git?.data?.modified_count as number) ?? 0;
   const stagedCount = (git?.data?.staged_count as number) ?? 0;
   const untrackedCount = (git?.data?.untracked_count as number) ?? 0;
-  const totalChanges = modifiedCount + stagedCount + untrackedCount;
 
-  // Runtime/tool version display
-  const runtimeVersion = nodeVersion
-    ? `v${nodeVersion}`
-    : rustVersion
-      ? `v${rustVersion}`
-      : pythonVersion
-        ? `v${pythonVersion}`
+  const runtimeVersion = nodeRuntimeVersion
+    ? `v${nodeRuntimeVersion}`
+    : rustRuntimeVersion
+      ? `v${rustRuntimeVersion}`
+      : pythonRuntimeVersion
+        ? `v${pythonRuntimeVersion}`
         : null;
 
-  const cwdDisplay = cwdShort(cwd);
+  const dirtyPlus = stagedCount;
+  const dirtyMinus = modifiedCount + untrackedCount;
 
   return (
     <div
@@ -140,7 +304,8 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
           cursor: "text",
         }}
       >
-        {/* Context badges bar */}
+        {/* Context badges bar (hidden in agent mode) */}
+        {!agentMode && (
         <div
           style={{
             padding: "8px 14px 0 14px",
@@ -149,27 +314,31 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
           }}
           className="flex items-center gap-1.5 flex-wrap"
         >
-          {/* Runtime/Tool Version */}
           {runtimeVersion && (
             <SquareBadge label={runtimeVersion} color="var(--color-success)" />
           )}
-
-          {/* Workspace / Project Path */}
-          <SquareBadge label={cwdDisplay} color="var(--color-text-muted)" title={cwd} />
-
-          {/* Git Branch */}
+          <SquareBadge label={cwd || "~"} color="var(--color-text-muted)" />
           {gitBranch && (
-            <SquareBadge label={gitBranch} color="var(--color-accent)" />
+            <SquareBadge label={`\u2387 ${gitBranch}`} color="var(--color-accent)" />
           )}
-
-          {/* Git Status (changes count) */}
           {git && (
-            <SquareBadge
-              label={String(totalChanges)}
-              color={totalChanges === 0 ? "var(--color-success)" : "var(--color-warning)"}
-            />
+            <span
+              className="shrink-0 flex items-center gap-1"
+              style={{
+                padding: "1px 6px",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface-hover)",
+                fontSize: 11,
+                lineHeight: "18px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ color: "var(--color-success)" }}>+{dirtyPlus}</span>
+              <span style={{ color: "var(--color-error)" }}>-{dirtyMinus}</span>
+            </span>
           )}
         </div>
+        )}
 
         {/* Input area */}
         <div
@@ -178,7 +347,7 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
         >
           <span
             style={{
-              color: "var(--color-primary)",
+              color: agentMode ? "var(--color-accent)" : "var(--color-primary)",
               fontSize: 14,
               fontFamily: "var(--font-mono)",
               fontWeight: 600,
@@ -186,10 +355,10 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
               userSelect: "none",
             }}
           >
-            $
+            {agentMode ? ">" : "$"}
           </span>
           <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
-            {/* Actual textarea - on top for interaction, transparent text */}
+            {/* Actual textarea */}
             <textarea
               ref={inputRef}
               onKeyDown={handleKeyDown}
@@ -212,44 +381,92 @@ export function InputBar({ cwd, onSubmit, onTab, visible }: InputBarProps) {
                 overflow: "hidden",
                 width: "100%",
               }}
-              placeholder="Type a command..."
+              placeholder={agentMode ? `Message ${agentName || "agent"}...` : "Type a command..."}
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
             />
-            {/* Syntax-highlighted overlay - behind textarea, visible through transparent text */}
-            {inputValue && (
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 0,
-                  pointerEvents: "none",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
-                  fontSize: 14,
-                  fontFamily: "var(--font-mono)",
-                  lineHeight: "24px",
-                }}
-              >
-                {tokens.map((token, i) => (
-                  <span key={i} style={{ color: TOKEN_COLORS[token.type] }}>
-                    {token.text}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Syntax-highlighted overlay + ghost text */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 0,
+                pointerEvents: "none",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                fontSize: 14,
+                fontFamily: "var(--font-mono)",
+                lineHeight: "24px",
+              }}
+            >
+              {inputValue ? (
+                <>
+                  {tokens.map((token, i) => (
+                    <span key={i} style={{ color: TOKEN_COLORS[token.type] }}>
+                      {token.text}
+                    </span>
+                  ))}
+                  {ghostText && (
+                    <span
+                      style={{
+                        color: "var(--color-text-muted)",
+                        opacity: 0.4,
+                      }}
+                    >
+                      {ghostText}
+                    </span>
+                  )}
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
+
+        {/* Agent mode hint bar */}
+        {agentMode && (
+          <div
+            style={{
+              padding: "4px 14px 6px 14px",
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              color: "var(--color-text-muted)",
+              borderTop: "1px solid var(--color-border-muted)",
+            }}
+            className="flex items-center gap-3"
+          >
+            <span style={{ color: "var(--color-accent)", opacity: 0.7 }}>
+              {agentName || "Agent"}
+            </span>
+            {agentFile && (
+              <span style={{ opacity: 0.6 }}>
+                In {agentFile}
+              </span>
+            )}
+            <span style={{ marginLeft: "auto", opacity: 0.5 }}>
+              Shift+Tab to accept
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// --- Square badge component: [label] ---
+/** Extract the current word at end of input (for ghost text matching). */
+function getCurrentWord(input: string): string {
+  const trimmed = input.trimEnd();
+  if (!trimmed) return "";
+  // Scan backward for space/tab
+  let i = trimmed.length - 1;
+  while (i >= 0 && trimmed[i] !== " " && trimmed[i] !== "\t") i--;
+  return trimmed.slice(i + 1);
+}
+
+// --- Square badge component ---
 
 function SquareBadge({
   label,
@@ -302,10 +519,9 @@ function tokenize(input: string): Token[] {
 
   const tokens: Token[] = [];
   let i = 0;
-  let expectCommand = true; // first word or after pipe/redirect
+  let expectCommand = true;
 
   while (i < input.length) {
-    // Whitespace
     if (input[i] === " " || input[i] === "\t") {
       const start = i;
       while (i < input.length && (input[i] === " " || input[i] === "\t")) i++;
@@ -313,7 +529,6 @@ function tokenize(input: string): Token[] {
       continue;
     }
 
-    // Pipe/redirect operators (multi-char: ||, &&, >>)
     if (input[i] === "|" || input[i] === "&" || input[i] === ";") {
       let op = input[i];
       if (i + 1 < input.length && input[i + 1] === input[i]) {
@@ -339,22 +554,20 @@ function tokenize(input: string): Token[] {
       continue;
     }
 
-    // Quoted strings
     if (input[i] === '"' || input[i] === "'") {
       const quote = input[i];
       const start = i;
-      i++; // skip opening quote
+      i++;
       while (i < input.length && input[i] !== quote) {
-        if (input[i] === "\\" && quote === '"') i++; // skip escaped char
+        if (input[i] === "\\" && quote === '"') i++;
         i++;
       }
-      if (i < input.length) i++; // skip closing quote
+      if (i < input.length) i++;
       tokens.push({ text: input.slice(start, i), type: "string" });
       if (expectCommand) expectCommand = false;
       continue;
     }
 
-    // Regular word
     const start = i;
     while (
       i < input.length &&
@@ -383,14 +596,4 @@ function tokenize(input: string): Token[] {
   }
 
   return tokens;
-}
-
-// --- Helpers ---
-
-function cwdShort(cwd: string): string {
-  if (!cwd) return "~";
-  const normalized = cwd.replace(/\\/g, "/");
-  const parts = normalized.split("/").filter(Boolean);
-  if (parts.length <= 3) return normalized;
-  return ".../" + parts.slice(-2).join("/");
 }

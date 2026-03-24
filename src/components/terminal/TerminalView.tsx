@@ -5,12 +5,17 @@ import { BlocksView } from "./BlocksView";
 import { InputBar } from "./InputBar";
 import { CompletionPopup } from "./CompletionPopup";
 import { SearchOverlay, type SearchOptions } from "./SearchOverlay";
-import { useTerminalStore, type GridSnapshot } from "../../stores/terminalStore";
+import {
+  useTerminalStore,
+  getNextCommandId,
+  type GridSnapshot,
+} from "../../stores/terminalStore";
 import { useCompletionStore, type CompletionItem } from "../../stores/completionStore";
 import { useSessionStore } from "../../stores/sessionStore";
 import { useContextStore } from "../../stores/contextStore";
+import { useAgentStore } from "../../stores/agentStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { useInputBuffer } from "../../hooks/useInputBuffer";
-// encodeKey no longer used — InputBar handles all text input
 
 interface GridUpdatePayload {
   session_id: string;
@@ -31,6 +36,47 @@ interface TitleChangedPayload {
   session_id: string;
   title: string;
 }
+
+interface CommandOutputPayload {
+  session_id: string;
+  command_id: number;
+  output: string;
+  duration_ms: number;
+}
+
+interface CommandOutputChunkPayload {
+  session_id: string;
+  command_id: number;
+  output: string;
+}
+
+interface AgentDetectedPayload {
+  session_id: string;
+  agent_name: string;
+  agent_kind: string;
+  pid: number;
+}
+
+interface AgentExitedPayload {
+  session_id: string;
+  agent_name: string;
+}
+
+interface AgentEventPayload {
+  session_id: string;
+  event_type: string;
+  data: Record<string, unknown>;
+  timestamp: number;
+}
+
+interface FileChangePayload {
+  session_id: string;
+  path: string;
+  action: "created" | "modified" | "deleted";
+  timestamp: number;
+}
+
+let agentEventCounter = 0;
 
 export function TerminalView() {
   const sessionId = useSessionStore((s) => s.activeSessionId);
@@ -59,8 +105,10 @@ export function TerminalView() {
   const selectedBlockIndex = useTerminalStore((s) => s.selectedBlockIndex);
   const selectBlock = useTerminalStore((s) => s.selectBlock);
   const moveBlockSelection = useTerminalStore((s) => s.moveBlockSelection);
-  const addFrontendBlock = useTerminalStore((s) => s.addFrontendBlock);
-  const frontendBlocks = useTerminalStore((s) => s.frontendBlocks);
+  const addCapturedBlock = useTerminalStore((s) => s.addCapturedBlock);
+  const updateOutputChunk = useTerminalStore((s) => s.updateOutputChunk);
+  const finalizeOutput = useTerminalStore((s) => s.finalizeOutput);
+  const capturedBlocks = useTerminalStore((s) => s.capturedBlocks);
 
   const { append, reset, getBuffer, getCursor, insertCompletion } =
     useInputBuffer();
@@ -68,18 +116,25 @@ export function TerminalView() {
   const snapshot = sessionId ? grids.get(sessionId) : undefined;
   const exited = sessionId ? exitedSessions.has(sessionId) : false;
 
-  // Focus container and sync CWD when active session changes
+  // Sync CWD from session store (for initial CWD before any cwd_changed event)
+  const sessionCwd = useSessionStore(
+    (s) => s.sessions.find((sess) => sess.id === sessionId)?.cwd ?? "",
+  );
+  const effectiveCwd = currentCwd || sessionCwd;
+
+  // Keep cwdRef in sync with effectiveCwd
+  useEffect(() => {
+    if (effectiveCwd) {
+      cwdRef.current = effectiveCwd;
+    }
+  }, [effectiveCwd]);
+
+  // Focus container when active session changes
   useEffect(() => {
     if (sessionId) {
       containerRef.current?.focus();
       completionHide();
       reset();
-      // Sync initial CWD from session store
-      const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId);
-      if (session?.cwd) {
-        cwdRef.current = session.cwd;
-        setCurrentCwd(session.cwd);
-      }
     }
   }, [sessionId, completionHide, reset]);
 
@@ -98,7 +153,6 @@ export function TerminalView() {
 
     const unlisten3 = listen<CwdChangedPayload>("cwd_changed", (event) => {
       updateSessionCwd(event.payload.session_id, event.payload.cwd);
-      // Update local ref if this is the active session
       if (event.payload.session_id === sessionId) {
         cwdRef.current = event.payload.cwd;
         setCurrentCwd(event.payload.cwd);
@@ -113,13 +167,133 @@ export function TerminalView() {
       },
     );
 
+    const unlisten5 = listen<CommandOutputPayload>(
+      "command_output",
+      (event) => {
+        finalizeOutput(
+          event.payload.session_id,
+          event.payload.command_id,
+          event.payload.output,
+          event.payload.duration_ms,
+        );
+      },
+    );
+
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const unlisten6 = listen<CommandOutputChunkPayload>(
+      "command_output_chunk",
+      (event) => {
+        const { session_id: sid, command_id: cmdId, output } = event.payload;
+        updateOutputChunk(sid, cmdId, output);
+
+        // Auto-finalize after 500ms of no new chunks
+        if (idleTimer) clearTimeout(idleTimer);
+        const chunkReceivedAt = Date.now();
+        idleTimer = setTimeout(() => {
+          const blocks = useTerminalStore.getState().capturedBlocks.get(sid);
+          const block = blocks?.find((b) => b.id === cmdId);
+          if (block && block.durationMs == null) {
+            // Duration = last actual output time - submit time (not including idle wait)
+            const duration = chunkReceivedAt - block.submittedAt;
+            finalizeOutput(sid, cmdId, output, duration);
+          }
+        }, 500);
+      },
+    );
+
     return () => {
+      if (idleTimer) clearTimeout(idleTimer);
       unlisten1.then((fn) => fn());
       unlisten2.then((fn) => fn());
       unlisten3.then((fn) => fn());
       unlisten4.then((fn) => fn());
+      unlisten5.then((fn) => fn());
+      unlisten6.then((fn) => fn());
     };
-  }, [updateGrid, updateSessionCwd, updateSessionTitle, sessionId, reset]);
+  }, [updateGrid, updateSessionCwd, updateSessionTitle, sessionId, reset, finalizeOutput, updateOutputChunk]);
+
+  // Listen for agent events
+  useEffect(() => {
+    const {
+      setAgent,
+      endAgent,
+      addEvent,
+      addFileChange,
+      updateTokens,
+      updateCost,
+      updateModel,
+      updateFile,
+      setThinking,
+    } = useAgentStore.getState();
+
+    const unlisten7 = listen<AgentDetectedPayload>("agent_detected", (event) => {
+      const p = event.payload;
+      setAgent(p.session_id, {
+        name: p.agent_name,
+        kind: p.agent_kind,
+        pid: p.pid,
+        detectedAt: Date.now(),
+      });
+    });
+
+    const unlisten8 = listen<AgentExitedPayload>("agent_exited", (event) => {
+      endAgent(event.payload.session_id);
+    });
+
+    const unlisten9 = listen<AgentEventPayload>("agent_event", (event) => {
+      const p = event.payload;
+      const eventId = `agent-evt-${++agentEventCounter}`;
+      const timelineEvent = {
+        id: eventId,
+        eventType: p.event_type,
+        data: p.data,
+        timestamp: p.timestamp,
+      };
+      addEvent(p.session_id, timelineEvent);
+
+      switch (p.event_type) {
+        case "thinking_start":
+          setThinking(p.session_id, true);
+          break;
+        case "thinking_end":
+          setThinking(p.session_id, false);
+          break;
+        case "token_update":
+          updateTokens(
+            p.session_id,
+            Number(p.data.input ?? 0),
+            Number(p.data.output ?? 0),
+          );
+          break;
+        case "cost_update":
+          updateCost(p.session_id, Number(p.data.total_cost ?? 0));
+          break;
+        case "model_info":
+          updateModel(p.session_id, String(p.data.model_name ?? ""));
+          break;
+        case "file_edit":
+          updateFile(p.session_id, String(p.data.path ?? ""));
+          break;
+      }
+    });
+
+    const unlisten10 = listen<FileChangePayload>("file_change", (event) => {
+      const p = event.payload;
+      addFileChange(p.session_id, {
+        path: p.path,
+        action: p.action,
+        timestamp: p.timestamp,
+      });
+    });
+
+    return () => {
+      unlisten7.then((fn) => fn());
+      unlisten8.then((fn) => fn());
+      unlisten9.then((fn) => fn());
+      unlisten10.then((fn) => fn());
+    };
+  }, []);
 
   // Handle resize
   useEffect(() => {
@@ -150,7 +324,6 @@ export function TerminalView() {
         setSearchCurrent(0);
         return;
       }
-      // Simple text search across grid rows
       let count = 0;
       for (const row of snapshot.rows) {
         const text = row.map((c) => c.content || " ").join("");
@@ -231,27 +404,25 @@ export function TerminalView() {
     (e: React.KeyboardEvent) => {
       if (!sessionId || exited) return;
 
-      // Skip during IME composition (Vietnamese, Chinese, etc.)
       if (e.nativeEvent.isComposing || e.key === "Process") return;
 
-      // Global shortcuts (work regardless of completion state)
       const sessions = useSessionStore.getState().sessions;
 
-      // Ctrl+T = new tab
       if (e.ctrlKey && !e.shiftKey && (e.key === "t" || e.key === "T")) {
         e.preventDefault();
-        useSessionStore.getState().createNewSession();
+        const rect = containerRef.current?.getBoundingClientRect();
+        const cols = rect ? Math.max(1, Math.floor(rect.width / 8.4)) : undefined;
+        const rows = rect ? Math.max(1, Math.floor(rect.height / (14 * 1.2))) : undefined;
+        useSessionStore.getState().createNewSession(undefined, cols, rows);
         return;
       }
 
-      // Ctrl+W = close tab
       if (e.ctrlKey && !e.shiftKey && (e.key === "w" || e.key === "W")) {
         e.preventDefault();
         useSessionStore.getState().closeSession(sessionId);
         return;
       }
 
-      // Ctrl+Tab / Ctrl+Shift+Tab = switch tabs
       if (e.ctrlKey && e.key === "Tab") {
         e.preventDefault();
         if (e.shiftKey) {
@@ -262,7 +433,6 @@ export function TerminalView() {
         return;
       }
 
-      // Ctrl+1-9 = switch to tab by index
       if (e.ctrlKey && !e.shiftKey && e.key >= "1" && e.key <= "9") {
         const idx = parseInt(e.key) - 1;
         if (idx < sessions.length) {
@@ -272,7 +442,6 @@ export function TerminalView() {
         }
       }
 
-      // Block navigation: Ctrl+Up/Down to enter/navigate, Escape to exit
       const blockCount = snapshot?.blocks.length ?? 0;
       if (e.ctrlKey && !e.shiftKey && e.key === "ArrowUp") {
         e.preventDefault();
@@ -284,7 +453,6 @@ export function TerminalView() {
         moveBlockSelection("down", blockCount);
         return;
       }
-      // Arrow keys in block nav mode (when no completion popup)
       if (selectedBlockIndex !== null && !completionVisible) {
         if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -301,11 +469,9 @@ export function TerminalView() {
           selectBlock(null);
           return;
         }
-        // Any other key exits block nav and passes through
         selectBlock(null);
       }
 
-      // Completion popup keyboard handling
       if (completionVisible) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -336,7 +502,6 @@ export function TerminalView() {
         }
       }
 
-      // Tab key (when popup not visible) -> trigger completions
       if (
         e.key === "Tab" &&
         !e.shiftKey &&
@@ -349,14 +514,12 @@ export function TerminalView() {
         return;
       }
 
-      // Ctrl+Shift+F = search
       if (e.ctrlKey && e.shiftKey && (e.key === "F" || e.key === "f")) {
         e.preventDefault();
         setSearchVisible((v) => !v);
         return;
       }
 
-      // Ctrl+C: copy if selection exists, otherwise send SIGINT
       if (e.ctrlKey && !e.shiftKey && (e.key === "c" || e.key === "C")) {
         const selection = window.getSelection()?.toString();
         if (selection) {
@@ -364,10 +527,14 @@ export function TerminalView() {
           navigator.clipboard.writeText(selection).catch(() => {});
           return;
         }
-        // No selection - fall through to send \x03 (SIGINT) to PTY
+        // Agent mode: Ctrl+C with no selection sends SIGINT to PTY
+        if (isAgentActive) {
+          e.preventDefault();
+          invoke("send_input", { sessionId, data: "\x03" }).catch(() => {});
+          return;
+        }
       }
 
-      // Ctrl+V: paste into terminal
       if (e.ctrlKey && !e.shiftKey && (e.key === "v" || e.key === "V")) {
         e.preventDefault();
         navigator.clipboard
@@ -382,7 +549,6 @@ export function TerminalView() {
         return;
       }
 
-      // Ctrl+Shift+V = paste (backward compat)
       if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
         e.preventDefault();
         navigator.clipboard
@@ -397,7 +563,6 @@ export function TerminalView() {
         return;
       }
 
-      // Ctrl+Shift+C = copy selection (backward compat)
       if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
         e.preventDefault();
         const selection = window.getSelection()?.toString();
@@ -407,8 +572,6 @@ export function TerminalView() {
         return;
       }
 
-      // For non-shortcut keys, focus the InputBar textarea.
-      // The InputBar is the only input method in chat/blocks mode.
       focusInputBar();
     },
     [
@@ -431,26 +594,40 @@ export function TerminalView() {
   );
 
   const handleClick = useCallback(() => {
-    // Focus the InputBar textarea (the only input method)
     const textarea = containerRef.current?.querySelector<HTMLTextAreaElement>(
       "textarea[placeholder]",
     );
     textarea?.focus();
   }, []);
 
+  // Agent mode detection
+  const agentSession = useAgentStore(
+    (s) => (sessionId ? s.sessions[sessionId] : undefined),
+  );
+  const isAgentActive = !!(agentSession && !agentSession.isEnded);
+  const agentName = agentSession?.identity?.name;
+  const agentFile = agentSession?.currentFile;
+  const filterChrome = useSettingsStore((s) => s.config.agent_filter_chrome);
+
   const handleInputSubmit = useCallback(
     (input: string) => {
       if (!sessionId) return;
-      // Create a frontend block for this command
-      const rowCount = snapshot?.rows.length ?? 0;
+
+      if (isAgentActive) {
+        // Agent mode: send directly to PTY stdin (chat with agent)
+        invoke("send_input", { sessionId, data: input + "\n" }).catch(() => {});
+        return;
+      }
+
+      const commandId = getNextCommandId();
       const ctx = useContextStore.getState().context;
       const gitBranch = ctx?.providers?.git?.data?.branch as string | undefined;
-      addFrontendBlock(sessionId, input, cwdRef.current, rowCount, gitBranch);
-      // Send to PTY
-      invoke("send_input", { sessionId, data: input + "\r" }).catch(() => {});
-      append(input + "\r");
+      // Add block to store
+      addCapturedBlock(sessionId, commandId, input, cwdRef.current, gitBranch);
+      // Submit via Rust (atomically captures + writes to PTY)
+      invoke("submit_command", { sessionId, command: input, commandId }).catch(() => {});
     },
-    [sessionId, append, snapshot, addFrontendBlock],
+    [sessionId, addCapturedBlock, isAgentActive],
   );
 
   const handleInputTab = useCallback(
@@ -469,9 +646,12 @@ export function TerminalView() {
   const handleRerun = useCallback(
     (command: string) => {
       if (!sessionId) return;
-      invoke("send_input", { sessionId, data: command + "\r" }).catch(() => {});
+      // Re-run goes through submit_command too
+      const commandId = getNextCommandId();
+      addCapturedBlock(sessionId, commandId, command, cwdRef.current);
+      invoke("submit_command", { sessionId, command, commandId }).catch(() => {});
     },
-    [sessionId],
+    [sessionId, addCapturedBlock],
   );
 
   if (!sessionId) {
@@ -497,7 +677,9 @@ export function TerminalView() {
           onRerun={handleRerun}
           selectedBlockIndex={selectedBlockIndex}
           onSelectBlock={selectBlock}
-          frontendBlocks={sessionId ? frontendBlocks.get(sessionId) : undefined}
+          capturedBlocks={sessionId ? capturedBlocks.get(sessionId) : undefined}
+          agentMode={isAgentActive}
+          filterChrome={filterChrome}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-sm">
@@ -505,10 +687,14 @@ export function TerminalView() {
         </div>
       )}
       <InputBar
-        cwd={currentCwd}
+        cwd={effectiveCwd}
+        sessionId={sessionId}
         onSubmit={handleInputSubmit}
         onTab={handleInputTab}
         visible={!!sessionId && !exited}
+        agentMode={isAgentActive}
+        agentName={agentName}
+        agentFile={agentFile}
       />
       <CompletionPopup />
       <SearchOverlay

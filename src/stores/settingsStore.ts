@@ -9,6 +9,7 @@ export interface AppConfig {
   cursor_blink: boolean;
   scrollback_size: number;
   sidebar_visible: boolean;
+  agent_filter_chrome: boolean;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -19,6 +20,7 @@ const DEFAULT_CONFIG: AppConfig = {
   cursor_blink: true,
   scrollback_size: 10000,
   sidebar_visible: true,
+  agent_filter_chrome: true,
 };
 
 interface SettingsState {

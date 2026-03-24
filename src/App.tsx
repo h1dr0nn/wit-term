@@ -3,10 +3,12 @@ import { TerminalView } from "./components/terminal/TerminalView";
 import { Header } from "./components/header/Header";
 import { SessionSidebar } from "./components/sidebar/SessionSidebar";
 import { ContextSidebar } from "./components/sidebar/ContextSidebar";
+import { AgentSidebar } from "./components/sidebar/AgentSidebar";
 import { SettingsModal } from "./components/settings/SettingsModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { Notifications } from "./components/Notifications";
 import { useSessionStore } from "./stores/sessionStore";
+import { useAgentStore } from "./stores/agentStore";
 import { useTheme } from "./hooks/useTheme";
 
 function App() {
@@ -15,6 +17,9 @@ function App() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [paletteVisible, setPaletteVisible] = useState(false);
   const createNewSession = useSessionStore((s) => s.createNewSession);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const agentSidebarVisible = useAgentStore((s) => s.sidebarVisible);
+  const toggleAgentSidebar = useAgentStore((s) => s.toggleSidebar);
 
   useTheme();
 
@@ -22,7 +27,13 @@ function App() {
   useEffect(() => {
     if (!initRef.current) {
       initRef.current = true;
-      createNewSession();
+      // Estimate initial terminal size from window dimensions
+      // Subtract ~300px for sidebars/padding, use char metrics
+      const availWidth = Math.max(400, window.innerWidth - 320);
+      const availHeight = Math.max(200, window.innerHeight - 120);
+      const cols = Math.max(1, Math.floor(availWidth / 8.4));
+      const rows = Math.max(1, Math.floor(availHeight / (14 * 1.2)));
+      createNewSession(undefined, cols, rows);
     }
   }, [createNewSession]);
 
@@ -48,6 +59,10 @@ function App() {
         e.preventDefault();
         setSettingsVisible((v) => !v);
       }
+      if (e.ctrlKey && e.shiftKey && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        toggleAgentSidebar();
+      }
       if (e.ctrlKey && e.shiftKey && (e.key === "p" || e.key === "P")) {
         e.preventDefault();
         setPaletteVisible((v) => !v);
@@ -55,7 +70,7 @@ function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [toggleSidebar, toggleContextSidebar]);
+  }, [toggleSidebar, toggleContextSidebar, toggleAgentSidebar]);
 
   return (
     <div className="window-root flex flex-col h-screen w-screen">
@@ -72,6 +87,9 @@ function App() {
             <TerminalView />
           </div>
           {contextSidebarVisible && <ContextSidebar />}
+          {agentSidebarVisible && activeSessionId && (
+            <AgentSidebar sessionId={activeSessionId} />
+          )}
         </main>
       </div>
       <SettingsModal

@@ -11,6 +11,7 @@ interface AppConfig {
   cursor_blink: boolean;
   scrollback_size: number;
   sidebar_visible: boolean;
+  agent_filter_chrome: boolean;
 }
 
 interface SettingsModalProps {
@@ -220,6 +221,15 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                         value={config.scrollback_size}
                         onChange={(e) => updateConfig({ scrollback_size: parseInt(e.target.value) || 10000 })}
                         className="bg-[var(--color-surface-hover)] text-[var(--color-text)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)] transition-colors w-24"
+                      />
+                    </SettingRow>
+                  </SettingGroup>
+
+                  <SettingGroup title="Agent Integration">
+                    <SettingRow label="Filter Agent TUI" description="Hide Claude Code / Aider separator lines and prompt chrome from terminal output.">
+                      <Toggle
+                        value={config.agent_filter_chrome}
+                        onChange={(v) => updateConfig({ agent_filter_chrome: v })}
                       />
                     </SettingRow>
                   </SettingGroup>

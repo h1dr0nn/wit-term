@@ -39,43 +39,68 @@ export interface GridSnapshot {
   scrollback_len: number;
 }
 
-/** Frontend-created block (when shell integration isn't available) */
-export interface FrontendBlock {
+/** Captured command block — output is plain text from Rust-side PTY capture. */
+export interface CapturedBlock {
+  /** Unique command ID (matches Rust-side command_id). */
   id: number;
   command: string;
   cwd: string;
-  /** Git branch at time of submission */
   gitBranch?: string;
-  /** Grid row count at time of submission (output starts after this) */
-  gridRowStart: number;
-  /** Set when next command is submitted */
-  gridRowEnd: number | null;
-  /** Timestamp */
   submittedAt: number;
+  /** Plain text output (set when command_output event arrives). */
+  outputText: string;
+  /** Timestamp of the last output chunk received. */
+  lastChunkAt?: number;
+  /** Duration in ms (set when finalized). */
+  durationMs?: number;
 }
 
-let nextFrontendBlockId = 1;
+let nextCommandId = 1;
+
+/** Generate a unique command ID for submit_command. */
+export function getNextCommandId(): number {
+  return nextCommandId++;
+}
 
 interface TerminalState {
   grids: Map<string, GridSnapshot>;
   selectedBlockIndex: number | null;
-  /** Frontend-driven blocks per session (used when no shell integration) */
-  frontendBlocks: Map<string, FrontendBlock[]>;
+  /** Captured command blocks per session. */
+  capturedBlocks: Map<string, CapturedBlock[]>;
 
   updateGrid: (sessionId: string, snapshot: GridSnapshot) => void;
   selectBlock: (index: number | null) => void;
   moveBlockSelection: (direction: "up" | "down", blockCount: number) => void;
 
-  /** Create a frontend block when user submits command from InputBar */
-  addFrontendBlock: (sessionId: string, command: string, cwd: string, gridRowCount: number, gitBranch?: string) => void;
-  /** Clear frontend blocks for a session */
-  clearFrontendBlocks: (sessionId: string) => void;
+  /** Add a new captured block when user submits a command. */
+  addCapturedBlock: (
+    sessionId: string,
+    commandId: number,
+    command: string,
+    cwd: string,
+    gitBranch?: string,
+  ) => void;
+  /** Update a captured block with live streaming output. */
+  updateOutputChunk: (
+    sessionId: string,
+    commandId: number,
+    output: string,
+  ) => void;
+  /** Finalize a captured block with output from Rust. */
+  finalizeOutput: (
+    sessionId: string,
+    commandId: number,
+    output: string,
+    durationMs: number,
+  ) => void;
+  /** Clear captured blocks for a session. */
+  clearCapturedBlocks: (sessionId: string) => void;
 }
 
 export const useTerminalStore = create<TerminalState>((set) => ({
   grids: new Map(),
   selectedBlockIndex: null,
-  frontendBlocks: new Map(),
+  capturedBlocks: new Map(),
 
   updateGrid: (sessionId, snapshot) =>
     set((state) => {
@@ -103,35 +128,57 @@ export const useTerminalStore = create<TerminalState>((set) => ({
       return { selectedBlockIndex: next };
     }),
 
-  addFrontendBlock: (sessionId, command, cwd, gridRowCount, gitBranch) =>
+  addCapturedBlock: (sessionId, commandId, command, cwd, gitBranch) =>
     set((state) => {
-      const frontendBlocks = new Map(state.frontendBlocks);
-      const blocks = [...(frontendBlocks.get(sessionId) || [])];
-
-      // Close the previous block's output range
-      if (blocks.length > 0) {
-        const last = blocks[blocks.length - 1];
-        blocks[blocks.length - 1] = { ...last, gridRowEnd: gridRowCount };
-      }
-
+      const capturedBlocks = new Map(state.capturedBlocks);
+      const blocks = [...(capturedBlocks.get(sessionId) || [])];
       blocks.push({
-        id: nextFrontendBlockId++,
+        id: commandId,
         command,
         cwd,
         gitBranch,
-        gridRowStart: gridRowCount,
-        gridRowEnd: null,
         submittedAt: Date.now(),
+        outputText: "",
       });
-
-      frontendBlocks.set(sessionId, blocks);
-      return { frontendBlocks };
+      capturedBlocks.set(sessionId, blocks);
+      return { capturedBlocks };
     }),
 
-  clearFrontendBlocks: (sessionId) =>
+  updateOutputChunk: (sessionId, commandId, output) =>
     set((state) => {
-      const frontendBlocks = new Map(state.frontendBlocks);
-      frontendBlocks.delete(sessionId);
-      return { frontendBlocks };
+      const capturedBlocks = new Map(state.capturedBlocks);
+      const blocks = capturedBlocks.get(sessionId);
+      if (!blocks) return state;
+      const now = Date.now();
+      // Only update if not yet finalized
+      const updated = blocks.map((b) =>
+        b.id === commandId && b.durationMs == null
+          ? { ...b, outputText: output, lastChunkAt: now }
+          : b,
+      );
+      capturedBlocks.set(sessionId, updated);
+      return { capturedBlocks };
+    }),
+
+  finalizeOutput: (sessionId, commandId, output, durationMs) =>
+    set((state) => {
+      const capturedBlocks = new Map(state.capturedBlocks);
+      const blocks = capturedBlocks.get(sessionId);
+      if (!blocks) return state;
+      const updated = blocks.map((b) => {
+        if (b.id !== commandId) return b;
+        // Don't overwrite if already finalized (auto-finalize was more accurate)
+        if (b.durationMs != null) return { ...b, outputText: output };
+        return { ...b, outputText: output, durationMs };
+      });
+      capturedBlocks.set(sessionId, updated);
+      return { capturedBlocks };
+    }),
+
+  clearCapturedBlocks: (sessionId) =>
+    set((state) => {
+      const capturedBlocks = new Map(state.capturedBlocks);
+      capturedBlocks.delete(sessionId);
+      return { capturedBlocks };
     }),
 }));
