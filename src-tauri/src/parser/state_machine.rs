@@ -13,6 +13,10 @@ pub struct Parser {
     osc_data: Vec<u8>,
     private_marker: Option<u8>,
     has_param: bool,
+    /// UTF-8 accumulator for multi-byte characters.
+    utf8_buf: [u8; 4],
+    utf8_len: u8,
+    utf8_needed: u8,
 }
 
 impl Parser {
@@ -25,6 +29,9 @@ impl Parser {
             osc_data: Vec::with_capacity(256),
             private_marker: None,
             has_param: false,
+            utf8_buf: [0; 4],
+            utf8_len: 0,
+            utf8_needed: 0,
         }
     }
 
@@ -81,6 +88,8 @@ impl Parser {
         self.osc_data.clear();
         self.private_marker = None;
         self.has_param = false;
+        self.utf8_len = 0;
+        self.utf8_needed = 0;
     }
 
     /// Finalize the current parameter being built.
@@ -107,12 +116,48 @@ impl Parser {
             }
             // DEL - ignored
             0x7F => {}
-            // UTF-8 multibyte or Latin-1 supplement
-            0x80..=0xFF => {
-                // For now, handle as single-byte print (will be extended with full UTF-8)
-                if let Some(ch) = char::from_u32(byte as u32) {
-                    actions.push(Action::Print(ch));
+            // UTF-8 multi-byte sequences
+            0xC0..=0xDF => {
+                // 2-byte UTF-8 start
+                self.utf8_buf[0] = byte;
+                self.utf8_len = 1;
+                self.utf8_needed = 2;
+            }
+            0xE0..=0xEF => {
+                // 3-byte UTF-8 start
+                self.utf8_buf[0] = byte;
+                self.utf8_len = 1;
+                self.utf8_needed = 3;
+            }
+            0xF0..=0xF7 => {
+                // 4-byte UTF-8 start
+                self.utf8_buf[0] = byte;
+                self.utf8_len = 1;
+                self.utf8_needed = 4;
+            }
+            0x80..=0xBF => {
+                // UTF-8 continuation byte
+                if self.utf8_needed > 0 && self.utf8_len < self.utf8_needed {
+                    self.utf8_buf[self.utf8_len as usize] = byte;
+                    self.utf8_len += 1;
+                    if self.utf8_len == self.utf8_needed {
+                        // Complete UTF-8 sequence
+                        if let Ok(s) = std::str::from_utf8(&self.utf8_buf[..self.utf8_len as usize]) {
+                            if let Some(ch) = s.chars().next() {
+                                actions.push(Action::Print(ch));
+                            }
+                        }
+                        self.utf8_len = 0;
+                        self.utf8_needed = 0;
+                    }
+                } else {
+                    // Stray continuation byte — ignore
+                    self.utf8_len = 0;
+                    self.utf8_needed = 0;
                 }
+            }
+            0xF8..=0xFF => {
+                // Invalid UTF-8 byte — ignore
             }
         }
     }
@@ -429,6 +474,35 @@ mod tests {
                 Action::Print('o'),
             ]
         );
+    }
+
+    #[test]
+    fn test_utf8_box_drawing() {
+        let mut parser = Parser::new();
+        // ─ (U+2500) = \xe2\x94\x80
+        // │ (U+2502) = \xe2\x94\x82
+        let actions = parser.process("─│".as_bytes());
+        assert_eq!(actions, vec![Action::Print('─'), Action::Print('│')]);
+    }
+
+    #[test]
+    fn test_utf8_emoji() {
+        let mut parser = Parser::new();
+        // ⚠ (U+26A0) = \xe2\x9a\xa0
+        let actions = parser.process("⚠".as_bytes());
+        assert_eq!(actions, vec![Action::Print('⚠')]);
+    }
+
+    #[test]
+    fn test_utf8_mixed_with_escape() {
+        let mut parser = Parser::new();
+        // "â" then ESC sequence — should not crash
+        let actions = parser.process("├\x1b[31mx\x1b[0m┤".as_bytes());
+        assert_eq!(actions[0], Action::Print('├'));
+        // Find the 'x' print
+        assert!(actions.iter().any(|a| *a == Action::Print('x')));
+        // Find the ┤
+        assert_eq!(*actions.last().unwrap(), Action::Print('┤'));
     }
 
     #[test]

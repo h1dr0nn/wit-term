@@ -5,6 +5,7 @@
 
 mod emulator;
 mod grid;
+pub mod strip;
 
 pub use emulator::Emulator;
 pub use grid::{Cell, CellAttrs, Color, Grid, NamedColor};
@@ -151,7 +152,7 @@ pub struct CellData {
 }
 
 /// Serializable color for IPC.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "type")]
 pub enum ColorData {
     Default,

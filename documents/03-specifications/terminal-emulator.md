@@ -119,20 +119,23 @@ Bytes   | Bits | Range
 
 **Implementation:**
 
-```rust
-pub struct Utf8Decoder {
-    /// Buffer for incomplete sequence
-    pending: [u8; 4],
-    /// Number of bytes received for the current sequence
-    pending_len: u8,
-    /// Number of additional bytes needed
-    needed: u8,
-}
+The ANSI parser state machine (`state_machine.rs`) includes a built-in multi-byte UTF-8 decoder. Rather than a separate `Utf8Decoder` struct, the parser itself maintains UTF-8 decoding state:
 
-impl Utf8Decoder {
-    /// Feed bytes, return decoded chars
-    pub fn decode(&mut self, input: &[u8]) -> Vec<char> { ... }
+```rust
+// In the parser state machine (state_machine.rs)
+pub struct StateMachine {
+    // ... parser state fields ...
+
+    /// Buffer for in-progress multi-byte UTF-8 sequence
+    utf8_buf: [u8; 4],
+    /// Number of bytes accumulated so far
+    utf8_len: u8,
+    /// Total bytes needed for the current sequence
+    utf8_needed: u8,
 }
+```
+
+When the parser encounters a leading byte with high bits set (indicating a multi-byte sequence), it buffers bytes in `utf8_buf` until `utf8_len == utf8_needed`, then decodes the complete codepoint and emits a `Print(char)` action. Incomplete sequences at buffer boundaries are preserved across `advance()` calls.
 ```
 
 ### Grapheme Clusters
@@ -161,11 +164,12 @@ East Asian Wide characters occupy 2 columns on the terminal:
 - Some emoji
 
 **Handling:**
-1. Use the `unicode-width` crate to determine character width (wcwidth equivalent)
-2. Wide character occupies the current cell + the next cell
-3. The next cell is marked as `WIDE_CONTINUATION` (placeholder)
-4. When overwriting a wide character or continuation cell - clear the entire pair
-5. Wide character at the last column - wrap to the next line (do not split)
+1. Use the `unicode-width` crate (added as a dependency) to determine character width (wcwidth equivalent)
+2. The `handle_print` method in the emulator checks `UnicodeWidthChar::width(c)` for every printed character
+3. Wide character occupies the current cell + a spacer cell in the next column
+4. The spacer cell is marked as `WIDE_CONTINUATION` (placeholder)
+5. When overwriting a wide character or continuation cell - clear the entire pair
+6. Wide character at the last column - wrap to the next line (do not split)
 
 ```rust
 impl Cell {

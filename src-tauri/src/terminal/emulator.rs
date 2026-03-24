@@ -164,6 +164,18 @@ impl Emulator {
     }
 
     fn handle_print(&mut self, ch: char) {
+        use unicode_width::UnicodeWidthChar;
+
+        let width = ch.width().unwrap_or(0);
+        if width == 0 {
+            // Zero-width character (combining marks, etc.) — append to previous cell
+            if self.cursor.col > 0 {
+                let cell = self.grid.cell_mut(self.cursor.row, self.cursor.col - 1);
+                cell.content.push(ch);
+            }
+            return;
+        }
+
         // Handle pending wrap
         if self.cursor.pending_wrap {
             if self.modes.auto_wrap {
@@ -177,16 +189,38 @@ impl Emulator {
             self.cursor.pending_wrap = false;
         }
 
+        // Wide character: if at the last column, wrap first
+        if width == 2 && self.cursor.col >= self.grid.cols - 1 {
+            // Can't fit wide char — pad current cell and wrap
+            self.grid.cell_mut(self.cursor.row, self.cursor.col).reset();
+            if self.modes.auto_wrap {
+                self.cursor.col = 0;
+                if self.cursor.row == self.grid.scroll_bottom {
+                    self.grid.scroll_up(1);
+                } else if self.cursor.row < self.grid.rows - 1 {
+                    self.cursor.row += 1;
+                }
+            }
+        }
+
         // Write character at cursor position
         self.grid
             .cell_mut(self.cursor.row, self.cursor.col)
             .set(ch, &self.cursor.attrs);
 
-        // Advance cursor
-        if self.cursor.col < self.grid.cols - 1 {
-            self.cursor.col += 1;
+        // For wide chars, clear the next cell as a spacer
+        if width == 2 && self.cursor.col + 1 < self.grid.cols {
+            let spacer = self.grid.cell_mut(self.cursor.row, self.cursor.col + 1);
+            spacer.content = compact_str::CompactString::from("");
+            spacer.attrs = self.cursor.attrs.clone();
+        }
+
+        // Advance cursor by width
+        let new_col = self.cursor.col + width;
+        if new_col < self.grid.cols {
+            self.cursor.col = new_col;
         } else {
-            // At the right margin: set pending wrap
+            self.cursor.col = self.grid.cols - 1;
             self.cursor.pending_wrap = true;
         }
     }
