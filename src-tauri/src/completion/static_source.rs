@@ -1,6 +1,7 @@
 //! Static completion source — loads TOML completion definitions.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -105,7 +106,6 @@ impl StaticSource {
     pub fn load(dir: &Path) -> Result<Self, String> {
         let mut commands = HashMap::new();
 
-        // Search order: dir itself, then bundled/, community/, user/ subdirs
         let search_dirs = [
             dir.to_path_buf(),
             dir.join("bundled"),
@@ -135,6 +135,10 @@ impl StaticSource {
                 match std::fs::read_to_string(&path) {
                     Ok(content) => match toml::from_str::<CompletionFile>(&content) {
                         Ok(file) => {
+                            // Validate version if present
+                            if let Some(ref _v) = file.wit_completion_version {
+                                // Future: version compatibility checks
+                            }
                             commands.insert(file.command.name.clone(), file.command);
                         }
                         Err(e) => {
@@ -147,6 +151,16 @@ impl StaticSource {
                 }
             }
         }
+    }
+
+    /// Collect all flags already used in the input.
+    fn used_flags(parsed: &ParsedInput) -> HashSet<String> {
+        parsed
+            .words
+            .iter()
+            .filter(|w| w.starts_with('-'))
+            .cloned()
+            .collect()
     }
 
     fn complete_subcommands(
@@ -176,7 +190,6 @@ impl StaticSource {
                     score,
                 });
             }
-            // Check aliases
             for alias in &sub.aliases {
                 if let Some(score) = fuzzy_match(query, alias) {
                     items.push(CompletionItem {
@@ -197,31 +210,76 @@ impl StaticSource {
         &self,
         flags: &[FlagDef],
         query: &str,
+        used: &HashSet<String>,
+        all_used: &HashSet<String>,
     ) -> Vec<CompletionItem> {
         let mut items = Vec::new();
 
+        // Collect names of flags that conflict with already-used flags
+        let conflicting: HashSet<&str> = flags
+            .iter()
+            .filter(|f| all_used.contains(&f.name) || all_used.contains(&f.short))
+            .flat_map(|f| f.conflicts_with.iter().map(|s| s.as_str()))
+            .collect();
+
         for flag in flags {
-            // Skip hidden and deprecated flags unless query is an exact prefix match
+            // Skip hidden unless exact prefix
             if flag.hidden && !flag.name.starts_with(query) {
                 continue;
             }
+            // Skip deprecated unless exact prefix
             if flag.deprecated && !flag.name.starts_with(query) {
                 continue;
             }
+            // Skip already-used non-repeatable flags
+            if !flag.repeatable
+                && (used.contains(&flag.name) || used.contains(&flag.short))
+            {
+                continue;
+            }
+            // Skip flags that conflict with already-used flags
+            if conflicting.contains(flag.name.as_str()) {
+                continue;
+            }
 
-            if let Some(score) = fuzzy_match(query, &flag.name) {
+            if let Some(mut score) = fuzzy_match(query, &flag.name) {
+                // Boost required flags
+                if flag.required {
+                    score += 0.2;
+                }
+
                 let display = if flag.short.is_empty() {
                     flag.name.clone()
                 } else {
                     format!("{}, {}", flag.short, flag.name)
                 };
+
                 let description = if flag.deprecated {
                     flag.deprecated_message
                         .as_deref()
                         .unwrap_or("[deprecated]")
                         .to_string()
                 } else {
-                    flag.description.clone()
+                    let mut desc = flag.description.clone();
+                    // Show default value if present
+                    if let Some(ref default) = flag.default_value {
+                        if desc.is_empty() {
+                            desc = format!("(default: {default})");
+                        } else {
+                            desc = format!("{desc} (default: {default})");
+                        }
+                    }
+                    // Show value_hint if it takes a value
+                    if flag.takes_value {
+                        if let Some(ref hint) = flag.value_hint {
+                            if desc.is_empty() {
+                                desc = format!("<{hint}>");
+                            } else {
+                                desc = format!("{desc}  <{hint}>");
+                            }
+                        }
+                    }
+                    desc
                 };
 
                 items.push(CompletionItem {
@@ -234,7 +292,10 @@ impl StaticSource {
             }
             // Also match by short flag
             if !flag.short.is_empty() {
-                if let Some(score) = fuzzy_match(query, &flag.short) {
+                if let Some(mut score) = fuzzy_match(query, &flag.short) {
+                    if flag.required {
+                        score += 0.2;
+                    }
                     items.push(CompletionItem {
                         text: flag.short.clone(),
                         display: format!("{}, {}", flag.short, flag.name),
@@ -243,6 +304,19 @@ impl StaticSource {
                         score,
                     });
                 }
+            }
+        }
+
+        // Also suggest flags that are required by already-used flags (boost them)
+        let required_by_used: HashSet<&str> = flags
+            .iter()
+            .filter(|f| all_used.contains(&f.name) || all_used.contains(&f.short))
+            .flat_map(|f| f.requires.iter().map(|s| s.as_str()))
+            .collect();
+
+        for item in &mut items {
+            if required_by_used.contains(item.text.as_str()) {
+                item.score += 0.15;
             }
         }
 
@@ -265,12 +339,55 @@ impl StaticSource {
         items
     }
 
-    fn complete_args(args: &[ArgDef], query: &str) -> Vec<CompletionItem> {
+    fn complete_args(args: &[ArgDef], query: &str, cwd: &Path) -> Vec<CompletionItem> {
         let mut items = Vec::new();
-        for arg in args {
+        for (idx, arg) in args.iter().enumerate() {
+            // Non-repeatable args: only suggest if this is the correct positional slot
+            // (simplified: skip if it's not the first arg and not repeatable)
+            if !arg.repeatable && idx > 0 && query.is_empty() {
+                continue;
+            }
             // If the arg has value_enum, suggest those values
             if !arg.value_enum.is_empty() {
-                items.extend(Self::complete_value_enum(&arg.value_enum, query));
+                let mut enum_items = Self::complete_value_enum(&arg.value_enum, query);
+                // Enrich with arg description
+                for item in &mut enum_items {
+                    if item.description.is_empty() && !arg.description.is_empty() {
+                        item.description = arg.description.clone();
+                    }
+                }
+                // Boost required args
+                if arg.required {
+                    for item in &mut enum_items {
+                        item.score += 0.2;
+                    }
+                }
+                items.extend(enum_items);
+            }
+
+            // value_hint: suggest paths for file/dir/path hints
+            if let Some(ref hint) = arg.value_hint {
+                let hint_lower = hint.to_lowercase();
+                if matches!(
+                    hint_lower.as_str(),
+                    "filepath" | "file_path" | "dirpath" | "dir_path" | "anypath" | "any_path" | "path"
+                ) {
+                    items.extend(complete_paths(query, cwd, &hint_lower));
+                }
+            }
+
+            // If no value_enum and no value_hint, show the arg name as a placeholder hint
+            if arg.value_enum.is_empty() && arg.value_hint.is_none() && !arg.name.is_empty() {
+                // Only show as hint if query is empty (user hasn't started typing arg value)
+                if query.is_empty() {
+                    items.push(CompletionItem {
+                        text: String::new(),
+                        display: format!("<{}>", arg.name),
+                        description: arg.description.clone(),
+                        kind: CompletionKind::Argument,
+                        score: if arg.required { 0.3 } else { 0.1 },
+                    });
+                }
             }
         }
         items
@@ -302,6 +419,95 @@ impl StaticSource {
 
         found
     }
+
+    fn collect_applicable_flags<'a>(
+        &'a self,
+        cmd: &'a CommandDef,
+        parsed: &ParsedInput,
+    ) -> Vec<&'a FlagDef> {
+        let mut flags: Vec<&FlagDef> = cmd.flags.iter().collect();
+        if let Some(sub_name) = &parsed.subcommand {
+            if let Some(sub) = cmd.subcommands.iter().find(|s| s.name == *sub_name) {
+                flags.extend(sub.flags.iter());
+            }
+        }
+        flags
+    }
+}
+
+/// Complete filesystem paths based on value_hint type.
+fn complete_paths(query: &str, cwd: &Path, hint: &str) -> Vec<CompletionItem> {
+    let base = if query.is_empty() {
+        cwd.to_path_buf()
+    } else {
+        let p = Path::new(query);
+        if p.is_absolute() {
+            if p.is_dir() {
+                p.to_path_buf()
+            } else {
+                p.parent().unwrap_or(p).to_path_buf()
+            }
+        } else {
+            let full = cwd.join(p);
+            if full.is_dir() {
+                full
+            } else {
+                full.parent().unwrap_or(&full).to_path_buf()
+            }
+        }
+    };
+
+    let prefix = if query.is_empty() {
+        ""
+    } else {
+        // Get the part after the last separator
+        query.rsplit_once(['/', '\\']).map(|(_, f)| f).unwrap_or(query)
+    };
+
+    let entries = match std::fs::read_dir(&base) {
+        Ok(e) => e,
+        Err(_) => return Vec::new(),
+    };
+
+    let dir_only = matches!(hint, "dirpath" | "dir_path");
+    let mut items = Vec::new();
+
+    for entry in entries.flatten().take(50) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+
+        if dir_only && !is_dir {
+            continue;
+        }
+
+        if let Some(score) = fuzzy_match(prefix, &name) {
+            let display_name = if is_dir {
+                format!("{name}/")
+            } else {
+                name.clone()
+            };
+            // Build the full completion text
+            let text = if query.contains('/') || query.contains('\\') {
+                let (dir_part, _) = query.rsplit_once(['/', '\\']).unwrap();
+                format!("{dir_part}/{name}")
+            } else {
+                name
+            };
+            items.push(CompletionItem {
+                text,
+                display: display_name,
+                description: if is_dir {
+                    "directory".to_string()
+                } else {
+                    String::new()
+                },
+                kind: CompletionKind::Path,
+                score,
+            });
+        }
+    }
+
+    items
 }
 
 impl CompletionSource for StaticSource {
@@ -309,7 +515,7 @@ impl CompletionSource for StaticSource {
         "static"
     }
 
-    fn complete(&self, parsed: &ParsedInput, _cwd: &Path) -> Vec<CompletionItem> {
+    fn complete(&self, parsed: &ParsedInput, cwd: &Path) -> Vec<CompletionItem> {
         // If we're completing the command itself (word_index == 0)
         if parsed.word_index == 0 {
             let mut items = Vec::new();
@@ -323,7 +529,6 @@ impl CompletionSource for StaticSource {
                         score,
                     });
                 }
-                // Also match command aliases
                 for alias in &cmd.aliases {
                     if let Some(score) = fuzzy_match(&parsed.current_word, alias) {
                         items.push(CompletionItem {
@@ -345,13 +550,14 @@ impl CompletionSource for StaticSource {
             None => return Vec::new(),
         };
 
+        let used = Self::used_flags(parsed);
+
         // If current word is a flag
         if parsed.is_flag {
             // Check if the previous flag takes a value_enum
             if parsed.word_index >= 2 {
                 let words: Vec<&str> = parsed.raw_words();
                 if let Some(prev_word) = words.get(parsed.word_index.saturating_sub(1)) {
-                    // Find the flag def for prev_word
                     let all_flags = self.collect_applicable_flags(cmd, parsed);
                     if let Some(flag) = all_flags.iter().find(|f| {
                         f.name == *prev_word || f.short == *prev_word
@@ -362,21 +568,71 @@ impl CompletionSource for StaticSource {
                                 &parsed.current_word,
                             );
                         }
+                        // value_hint on flag: suggest paths
+                        if flag.takes_value {
+                            if let Some(ref hint) = flag.value_hint {
+                                let hint_lower = hint.to_lowercase();
+                                if matches!(
+                                    hint_lower.as_str(),
+                                    "filepath" | "file_path" | "dirpath" | "dir_path" | "anypath" | "any_path" | "path"
+                                ) {
+                                    return complete_paths(&parsed.current_word, cwd, &hint_lower);
+                                }
+                            }
+                        }
                     }
                 }
             }
 
             // Subcommand-specific flags
             if let Some(sub_name) = &parsed.subcommand {
-                // Try nested subcommands
                 let sub_chain: Vec<&str> = vec![sub_name.as_str()];
                 if let Some(sub) = Self::find_subcommand(cmd, &sub_chain) {
-                    let mut items = self.complete_flags(&sub.flags, &parsed.current_word);
-                    items.extend(self.complete_flags(&cmd.flags, &parsed.current_word));
+                    let mut items =
+                        self.complete_flags(&sub.flags, &parsed.current_word, &used, &used);
+                    items.extend(self.complete_flags(
+                        &cmd.flags,
+                        &parsed.current_word,
+                        &used,
+                        &used,
+                    ));
                     return items;
                 }
             }
-            return self.complete_flags(&cmd.flags, &parsed.current_word);
+            return self.complete_flags(&cmd.flags, &parsed.current_word, &used, &used);
+        }
+
+        // Check if previous word is a flag that takes a value
+        if parsed.word_index >= 2 {
+            let words: Vec<&str> = parsed.raw_words();
+            if let Some(prev_word) = words.get(parsed.word_index.saturating_sub(1)) {
+                if prev_word.starts_with('-') {
+                    let all_flags = self.collect_applicable_flags(cmd, parsed);
+                    if let Some(flag) = all_flags.iter().find(|f| {
+                        f.name == *prev_word || f.short == *prev_word
+                    }) {
+                        if flag.takes_value {
+                            // value_enum
+                            if !flag.value_enum.is_empty() {
+                                return Self::complete_value_enum(
+                                    &flag.value_enum,
+                                    &parsed.current_word,
+                                );
+                            }
+                            // value_hint path completion
+                            if let Some(ref hint) = flag.value_hint {
+                                let hint_lower = hint.to_lowercase();
+                                if matches!(
+                                    hint_lower.as_str(),
+                                    "filepath" | "file_path" | "dirpath" | "dir_path" | "anypath" | "any_path" | "path"
+                                ) {
+                                    return complete_paths(&parsed.current_word, cwd, &hint_lower);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Complete subcommands
@@ -401,7 +657,8 @@ impl CompletionSource for StaticSource {
                     }
                     // Try completing args
                     if !sub.args.is_empty() {
-                        let arg_items = Self::complete_args(&sub.args, &parsed.current_word);
+                        let arg_items =
+                            Self::complete_args(&sub.args, &parsed.current_word, cwd);
                         if !arg_items.is_empty() {
                             return arg_items;
                         }
@@ -411,7 +668,7 @@ impl CompletionSource for StaticSource {
 
             // Try command-level args
             if !cmd.args.is_empty() {
-                return Self::complete_args(&cmd.args, &parsed.current_word);
+                return Self::complete_args(&cmd.args, &parsed.current_word, cwd);
             }
         }
 
@@ -419,25 +676,8 @@ impl CompletionSource for StaticSource {
     }
 }
 
-impl StaticSource {
-    fn collect_applicable_flags<'a>(
-        &'a self,
-        cmd: &'a CommandDef,
-        parsed: &ParsedInput,
-    ) -> Vec<&'a FlagDef> {
-        let mut flags: Vec<&FlagDef> = cmd.flags.iter().collect();
-        if let Some(sub_name) = &parsed.subcommand {
-            if let Some(sub) = cmd.subcommands.iter().find(|s| s.name == *sub_name) {
-                flags.extend(sub.flags.iter());
-            }
-        }
-        flags
-    }
-}
-
 impl ParsedInput {
     fn raw_words(&self) -> Vec<&str> {
-        // Simple split for accessing previous words
         self.line.split_whitespace().collect()
     }
 }
@@ -464,6 +704,30 @@ name = "--message"
 short = "-m"
 description = "Commit message"
 takes_value = true
+value_hint = "filepath"
+
+[[command.subcommands.flags]]
+name = "--all"
+short = "-a"
+description = "Stage all changes"
+conflicts_with = ["--patch"]
+
+[[command.subcommands.flags]]
+name = "--patch"
+short = "-p"
+description = "Interactive staging"
+conflicts_with = ["--all"]
+
+[[command.subcommands.flags]]
+name = "--amend"
+description = "Amend last commit"
+required = false
+repeatable = false
+
+[[command.subcommands.args]]
+name = "pathspec"
+description = "Files to commit"
+value_hint = "filepath"
 
 [[command.subcommands]]
 name = "checkout"
@@ -485,6 +749,7 @@ description = "Remove a remote"
 [[command.flags]]
 name = "--version"
 description = "Show version"
+default_value = "short"
 
 [[command.flags]]
 name = "--help"
@@ -538,9 +803,45 @@ hidden = true
         let source = make_test_source();
         let parsed = super::super::parser::parse_input("git --ver", 9);
         let items = source.complete(&parsed, Path::new("/tmp"));
-        // --version should appear, --help should be filtered (hidden)
         assert!(items.iter().any(|i| i.text == "--version"));
         assert!(!items.iter().any(|i| i.text == "--help"));
+    }
+
+    #[test]
+    fn test_default_value_in_description() {
+        let source = make_test_source();
+        let parsed = super::super::parser::parse_input("git --ver", 9);
+        let items = source.complete(&parsed, Path::new("/tmp"));
+        let version = items.iter().find(|i| i.text == "--version").unwrap();
+        assert!(
+            version.description.contains("default: short"),
+            "description should contain default value, got: {}",
+            version.description
+        );
+    }
+
+    #[test]
+    fn test_non_repeatable_flag_filtered() {
+        let source = make_test_source();
+        // User already typed --amend, should not suggest it again
+        let parsed = super::super::parser::parse_input("git commit --amend --a", 22);
+        let items = source.complete(&parsed, Path::new("/tmp"));
+        assert!(
+            !items.iter().any(|i| i.text == "--amend"),
+            "non-repeatable --amend should be filtered"
+        );
+    }
+
+    #[test]
+    fn test_conflicting_flag_filtered() {
+        let source = make_test_source();
+        // User already typed --all, --patch should be filtered (conflicts_with)
+        let parsed = super::super::parser::parse_input("git commit --all --", 19);
+        let items = source.complete(&parsed, Path::new("/tmp"));
+        assert!(
+            !items.iter().any(|i| i.text == "--patch"),
+            "--patch conflicts with --all and should be filtered"
+        );
     }
 
     #[test]
@@ -559,7 +860,6 @@ description = "Test command"
     #[test]
     fn test_nested_subcommands() {
         let source = make_test_source();
-        // "git remote a" should suggest "add"
         let parsed = super::super::parser::parse_input("git remote a", 12);
         let items = source.complete(&parsed, Path::new("/tmp"));
         assert!(items.iter().any(|i| i.text == "add"));

@@ -21,7 +21,12 @@ pub struct ParsedInput {
 
 /// Parse input text at cursor position into structured form.
 pub fn parse_input(input: &str, cursor_pos: usize) -> ParsedInput {
-    let line = &input[..cursor_pos.min(input.len())];
+    // Snap cursor_pos to a valid char boundary to avoid panics with multi-byte UTF-8.
+    let mut pos = cursor_pos.min(input.len());
+    while pos > 0 && !input.is_char_boundary(pos) {
+        pos -= 1;
+    }
+    let line = &input[..pos];
 
     // Split into words, preserving the last word even if empty
     let words: Vec<String> = shell_split(line);

@@ -147,6 +147,19 @@ impl ContextProvider for NodeProvider {
             }
         }
 
+        // Detect Node.js runtime version (node --version)
+        if let Ok(output) = std::process::Command::new("node")
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                let ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                // node --version returns "v24.14.0", store without the leading 'v'
+                let ver = ver.strip_prefix('v').unwrap_or(&ver).to_string();
+                data.insert("runtime_version".into(), ContextValue::String(ver));
+            }
+        }
+
         Ok(ContextInfo {
             provider: "node".into(),
             data,

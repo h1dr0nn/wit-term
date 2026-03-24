@@ -24,6 +24,8 @@ pub struct AppConfig {
     pub scrollback_size: usize,
     #[serde(default = "default_true")]
     pub sidebar_visible: bool,
+    #[serde(default = "default_true")]
+    pub agent_filter_chrome: bool,
 }
 
 fn default_font_family() -> String {
@@ -55,6 +57,7 @@ impl Default for AppConfig {
             cursor_blink: default_true(),
             scrollback_size: default_scrollback(),
             sidebar_visible: default_true(),
+            agent_filter_chrome: default_true(),
         }
     }
 }

@@ -218,6 +218,23 @@ impl ContextProvider for PythonProvider {
             );
         }
 
+        // Detect Python runtime version
+        if let Ok(output) = std::process::Command::new("python")
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                // "Python 3.12.0" -> "3.12.0"
+                let out = String::from_utf8_lossy(&output.stdout);
+                if let Some(ver) = out.trim().strip_prefix("Python ") {
+                    data.insert(
+                        "runtime_version".into(),
+                        ContextValue::String(ver.to_string()),
+                    );
+                }
+            }
+        }
+
         Ok(ContextInfo {
             provider: "python".into(),
             data,

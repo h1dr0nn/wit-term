@@ -138,6 +138,23 @@ impl ContextProvider for RustProvider {
             }
         }
 
+        // Detect rustc runtime version
+        if let Ok(output) = std::process::Command::new("rustc")
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                // "rustc 1.79.0 (129f3b996 2024-06-10)" -> "1.79.0"
+                let out = String::from_utf8_lossy(&output.stdout);
+                if let Some(ver) = out.split_whitespace().nth(1) {
+                    data.insert(
+                        "runtime_version".into(),
+                        ContextValue::String(ver.to_string()),
+                    );
+                }
+            }
+        }
+
         Ok(ContextInfo {
             provider: "rust".into(),
             data,
