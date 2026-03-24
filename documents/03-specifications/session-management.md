@@ -815,6 +815,58 @@ pub struct SessionInfo {
 
 ---
 
+## Command Capture
+
+### Overview
+
+Command capture enables Warp-style "block mode" where each command and its output are tracked as a discrete unit (a `CapturedBlock`). This is managed via a `CaptureState` on each session, shared between the IPC command handler thread and the PTY reader thread.
+
+### CaptureState
+
+```rust
+pub struct CaptureState {
+    /// ID of the active command (None if no capture in progress)
+    pub active_command_id: Option<String>,
+    /// The command text being captured
+    pub active_command: Option<String>,
+    /// Grid row where capture started
+    pub start_cursor_row: Option<usize>,
+    /// When the command was submitted
+    pub started_at: Option<Instant>,
+}
+```
+
+The `CaptureState` is wrapped in `Arc<Mutex<CaptureState>>` and shared between:
+- The **IPC handler** (`submit_command`) which sets it when a command is submitted
+- The **PTY read loop** which reads it to know when to capture output and clears it when the command completes
+
+### Lifecycle
+
+1. **Submission**: Frontend calls `submit_command(sessionId, command, commandId)`. The handler locks the session, sets `CaptureState` fields, and writes `command + "\r"` to the PTY.
+
+2. **Capture**: The PTY read loop checks `CaptureState` after processing each read. When `active_command_id` is set, it:
+   - Extracts text from grid rows (from `start_cursor_row` to current cursor) via `grid_to_ansi_text()`
+   - Strips the echoed command and prompt via `strip_echo_and_prompt()`
+   - Emits `command_output_chunk` events with incremental output
+
+3. **Completion**: When the PTY read loop detects a new prompt (via `extract_cwd_from_prompt()`), it:
+   - Calculates `duration_ms` from `started_at`
+   - Emits `command_output` with the full output and duration
+   - Clears the `CaptureState`
+
+### Events
+
+| Event | Payload | When |
+|---|---|---|
+| `command_output_chunk` | `{ session_id, command_id, output }` | Incremental output during execution |
+| `command_output` | `{ session_id, command_id, output, duration_ms }` | Command completed (prompt reappeared) |
+
+### CWD Detection from Prompt
+
+The `extract_cwd_from_prompt()` function in `terminal/strip.rs` reads the grid row at the cursor position and attempts to parse a CWD from common prompt formats (PowerShell `PS C:\path>`, CMD `C:\path>`, bash `user@host:~/path$`). This is used both for CWD tracking and for detecting command completion.
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests

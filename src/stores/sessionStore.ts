@@ -8,6 +8,14 @@ export interface SessionInfo {
   createdAt: number;
 }
 
+interface PersistedSession {
+  id: string;
+  title: string;
+  cwd: string;
+  created_at: number;
+  last_used_at: number;
+}
+
 interface SessionState {
   sessions: SessionInfo[];
   activeSessionId: string | null;
@@ -18,11 +26,18 @@ interface SessionState {
   updateSessionTitle: (id: string, title: string) => void;
   updateSessionCwd: (id: string, cwd: string) => void;
 
-  createNewSession: (cwd?: string) => Promise<string>;
+  createNewSession: (cwd?: string, cols?: number, rows?: number) => Promise<string>;
   closeSession: (id: string) => Promise<void>;
   switchToNext: () => void;
   switchToPrevious: () => void;
   switchToIndex: (index: number) => void;
+
+  /** Save current session state to disk via Rust backend. */
+  saveSessionState: () => Promise<void>;
+  /** Load persisted sessions from disk via Rust backend. */
+  loadPersistedSessions: () => Promise<PersistedSession[]>;
+  /** Restore a session at a given CWD (creates a new PTY session). */
+  restoreSession: (title: string, cwd: string) => Promise<string>;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -62,8 +77,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       sessions: state.sessions.map((s) => (s.id === id ? { ...s, cwd } : s)),
     })),
 
-  createNewSession: async (cwd?: string) => {
-    const result = await invoke<{ id: string; cwd: string }>("create_session", { cwd: cwd ?? null });
+  createNewSession: async (cwd?: string, cols?: number, rows?: number) => {
+    const result = await invoke<{ id: string; cwd: string }>("create_session", {
+      cwd: cwd ?? null,
+      cols: cols ?? null,
+      rows: rows ?? null,
+    });
     get().addSession({
       id: result.id,
       title: `Terminal ${get().sessions.length + 1}`,
@@ -71,6 +90,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       createdAt: Date.now(),
     });
     get().setActiveSession(result.id);
+    // Persist after creating
+    get().saveSessionState();
     return result.id;
   },
 
@@ -81,6 +102,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       // Session may already be exited
     }
     get().removeSession(id);
+    // Persist after closing
+    get().saveSessionState();
   },
 
   switchToNext: () => {
@@ -104,5 +127,45 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (index >= 0 && index < sessions.length) {
       set({ activeSessionId: sessions[index].id });
     }
+  },
+
+  saveSessionState: async () => {
+    const { sessions } = get();
+    const persisted: PersistedSession[] = sessions.map((s) => ({
+      id: s.id,
+      title: s.title,
+      cwd: s.cwd,
+      created_at: s.createdAt,
+      last_used_at: Date.now(),
+    }));
+    try {
+      await invoke("save_session_state", { sessions: persisted });
+    } catch (err) {
+      console.error("Failed to save session state:", err);
+    }
+  },
+
+  loadPersistedSessions: async () => {
+    try {
+      const sessions = await invoke<PersistedSession[]>("load_session_state");
+      return sessions;
+    } catch (err) {
+      console.error("Failed to load persisted sessions:", err);
+      return [];
+    }
+  },
+
+  restoreSession: async (title: string, cwd: string) => {
+    const result = await invoke<{ id: string; cwd: string }>("create_session", { cwd });
+    get().addSession({
+      id: result.id,
+      title,
+      cwd: result.cwd,
+      createdAt: Date.now(),
+    });
+    get().setActiveSession(result.id);
+    // Persist after restoring
+    get().saveSessionState();
+    return result.id;
   },
 }));

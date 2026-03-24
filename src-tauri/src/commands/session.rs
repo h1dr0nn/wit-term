@@ -48,6 +48,47 @@ struct BellPayload {
     session_id: String,
 }
 
+#[derive(Clone, serde::Serialize)]
+struct CommandOutputPayload {
+    session_id: String,
+    command_id: u64,
+    output: String,
+    duration_ms: u64,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct CommandOutputChunkPayload {
+    session_id: String,
+    command_id: u64,
+    output: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct AgentDetectedPayload {
+    session_id: String,
+    agent_name: String,
+    agent_kind: String,
+    pid: u32,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct AgentExitedPayload {
+    session_id: String,
+    agent_name: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct AgentEventPayload {
+    session_id: String,
+    event: crate::agent::types::AgentEvent,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct FileChangePayload {
+    session_id: String,
+    change: crate::agent::types::FileChange,
+}
+
 /// Initialize session event forwarding to the frontend.
 pub fn init_event_forwarding(app: &AppHandle) {
     let manager = app.state::<SessionManagerState>();
@@ -122,6 +163,82 @@ pub fn init_event_forwarding(app: &AppHandle) {
                             BellPayload { session_id },
                         );
                     }
+                    SessionEvent::CommandOutput {
+                        session_id,
+                        command_id,
+                        output,
+                        duration_ms,
+                    } => {
+                        let _ = app_handle.emit(
+                            "command_output",
+                            CommandOutputPayload {
+                                session_id,
+                                command_id,
+                                output,
+                                duration_ms,
+                            },
+                        );
+                    }
+                    SessionEvent::CommandOutputChunk {
+                        session_id,
+                        command_id,
+                        output,
+                    } => {
+                        let _ = app_handle.emit(
+                            "command_output_chunk",
+                            CommandOutputChunkPayload {
+                                session_id,
+                                command_id,
+                                output,
+                            },
+                        );
+                    }
+                    SessionEvent::AgentDetected {
+                        session_id,
+                        agent_name,
+                        agent_kind,
+                        pid,
+                    } => {
+                        let _ = app_handle.emit(
+                            "agent_detected",
+                            AgentDetectedPayload {
+                                session_id,
+                                agent_name,
+                                agent_kind,
+                                pid,
+                            },
+                        );
+                    }
+                    SessionEvent::AgentExited {
+                        session_id,
+                        agent_name,
+                    } => {
+                        let _ = app_handle.emit(
+                            "agent_exited",
+                            AgentExitedPayload {
+                                session_id,
+                                agent_name,
+                            },
+                        );
+                    }
+                    SessionEvent::AgentEvent { session_id, event } => {
+                        let _ = app_handle.emit(
+                            "agent_event",
+                            AgentEventPayload {
+                                session_id,
+                                event,
+                            },
+                        );
+                    }
+                    SessionEvent::FileChange { session_id, change } => {
+                        let _ = app_handle.emit(
+                            "file_change",
+                            FileChangePayload {
+                                session_id,
+                                change,
+                            },
+                        );
+                    }
                 }
             }
         })
@@ -129,7 +246,7 @@ pub fn init_event_forwarding(app: &AppHandle) {
 }
 
 #[derive(Clone, serde::Serialize)]
-struct CreateSessionResult {
+pub struct CreateSessionResult {
     id: String,
     cwd: String,
 }
@@ -137,16 +254,22 @@ struct CreateSessionResult {
 #[tauri::command]
 pub fn create_session(
     cwd: Option<String>,
+    cols: Option<u16>,
+    rows: Option<u16>,
     state: State<'_, SessionManagerState>,
 ) -> Result<CreateSessionResult, String> {
     let mut manager = state.0.lock().unwrap();
-    let config = if let Some(dir) = &cwd {
-        let mut c = crate::pty::PtyConfig::default();
+    let mut c = crate::pty::PtyConfig::default();
+    if let Some(dir) = &cwd {
         c.cwd = std::path::PathBuf::from(dir);
-        Some(c)
-    } else {
-        None
-    };
+    }
+    if let Some(cols) = cols {
+        c.cols = cols;
+    }
+    if let Some(rows) = rows {
+        c.rows = rows;
+    }
+    let config = Some(c);
     // Determine the actual CWD that will be used
     let actual_cwd = config
         .as_ref()
@@ -190,6 +313,17 @@ pub fn send_input(
 }
 
 #[tauri::command]
+pub fn submit_command(
+    session_id: String,
+    command: String,
+    command_id: u64,
+    state: State<'_, SessionManagerState>,
+) -> Result<(), String> {
+    let manager = state.0.lock().unwrap();
+    manager.submit_command(&session_id, &command, command_id)
+}
+
+#[tauri::command]
 pub fn resize_session(
     session_id: String,
     cols: u16,
@@ -207,6 +341,18 @@ pub fn get_snapshot(
 ) -> Result<GridSnapshot, String> {
     let manager = state.0.lock().unwrap();
     manager.get_snapshot(&session_id)
+}
+
+#[tauri::command]
+pub fn save_session_state(
+    sessions: Vec<crate::persistence::PersistedSession>,
+) -> Result<(), String> {
+    crate::persistence::save_sessions(&sessions)
+}
+
+#[tauri::command]
+pub fn load_session_state() -> Result<Vec<crate::persistence::PersistedSession>, String> {
+    crate::persistence::load_sessions()
 }
 
 /// Alias for get_snapshot to match documented API.
